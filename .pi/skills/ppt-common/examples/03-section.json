@@ -1,0 +1,7 @@
+{
+  "slide_type": "section",
+  "no": "02",
+  "title": "评测平台总体架构",
+  "subtitle": "五层结构，自底向上层层隔离",
+  "icon": "工程"
+}

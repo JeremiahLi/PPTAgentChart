@@ -1,0 +1,1736 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>图标库审计</title><style>
+body{background:#f6f7f9;color:#1b1f24;font:14px/1.6 "Microsoft YaHei",system-ui,sans-serif;margin:0;padding:32px}
+h1{font-size:22px;margin:0 0 4px} .sub{color:#5b6570;margin-bottom:24px}
+h2{font-size:15px;margin:28px 0 10px;color:#243040;border-left:3px solid #c0392b;padding-left:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.cell{background:#fff;border:1px solid #e3e6ea;border-radius:8px;padding:10px 6px 6px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+.cell svg{width:26px;height:26px;color:#1b1f24}
+.cell b{font-size:10.5px;font-weight:500;color:#2b333c;word-break:break-all;line-height:1.25}
+.cell i{font-size:9.5px;color:#98a2ad;font-style:normal}
+.cell em{font-size:9.5px;color:#c0392b;font-style:normal}
+</style></head><body>
+<h1>assets/icons 审计样张</h1>
+<div class="sub">9931 个文件 / 6911 个不同名字 / 4 个库 / 9 个风格；竖列是同一概念的 4 种画法，横排是同库内的样本。</div>
+<section><h2>① 同一概念，四种画法（笔粗细 2.0 vs 1.5、占框 16.9 vs 18.4）</h2><div class="grid"><div class="cell" title="tabler/outline/database 占框18/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 6a8 3 0 1 0 16 0a8 3 0 1 0 -16 0" />
+  <path d="M4 6v6a8 3 0 0 0 16 0v-6" />
+  <path d="M4 12v6a8 3 0 0 0 16 0v-6" />
+</svg><b>database</b><i>tabler</i></div><div class="cell" title="lucide/outline/database 占框20/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <ellipse cx="12" cy="5" rx="9" ry="3" />
+  <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+  <path d="M3 12A9 3 0 0 0 21 12" />
+</svg><b>database</b><i>lucide</i></div><div class="cell" title="feather/outline/database 占框20/24 复杂度12"><svg xmlns="http://www.w3.org/2000/svg"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg><b>database</b><i>feather</i></div><div class="cell" title="tabler/outline/shield 占框19/24 复杂度5"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3" />
+</svg><b>shield</b><i>tabler</i></div><div class="cell" title="lucide/outline/shield 占框20/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+</svg><b>shield</b><i>lucide</i></div><div class="cell" title="feather/outline/shield 占框20/24 复杂度7"><svg xmlns="http://www.w3.org/2000/svg"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><b>shield</b><i>feather</i></div><div class="cell" title="heroicons/outline/rocket-launch 占框20/24 复杂度21"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke- stroke="currentColor" aria-hidden="true" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 0 1-2.448-2.448 14.9 14.9 0 0 1 .06-.312m-2.24 2.39a4.493 4.493 0 0 0-1.757 4.306 4.493 4.493 0 0 0 4.306-1.758M16.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>
+</svg><b>rocket-launch</b><i>heroicons</i></div><div class="cell" title="tabler/outline/settings 占框19/24 复杂度20"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065" />
+  <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+</svg><b>settings</b><i>tabler</i></div><div class="cell" title="lucide/outline/settings 占框20/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
+  <circle cx="12" cy="12" r="3" />
+</svg><b>settings</b><i>lucide</i></div><div class="cell" title="feather/outline/settings 占框22/24 复杂度45"><svg xmlns="http://www.w3.org/2000/svg"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><b>settings</b><i>feather</i></div><div class="cell" title="tabler/outline/chart-bar 占框18/24 复杂度29"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6" />
+  <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10" />
+  <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14" />
+  <path d="M4 20h14" />
+</svg><b>chart-bar</b><i>tabler</i></div><div class="cell" title="lucide/outline/chart-bar 占框18/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+  <path d="M7 16h8" />
+  <path d="M7 11h12" />
+  <path d="M7 6h3" />
+</svg><b>chart-bar</b><i>lucide</i></div><div class="cell" title="heroicons/outline/chart-bar 占框18/24 复杂度30"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke- stroke="currentColor" aria-hidden="true" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
+</svg><b>chart-bar</b><i>heroicons</i></div><div class="cell" title="tabler/outline/user 占框18/24 复杂度9"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0" />
+  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+</svg><b>user</b><i>tabler</i></div><div class="cell" title="lucide/outline/user 占框18/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+  <circle cx="12" cy="7" r="4" />
+</svg><b>user</b><i>lucide</i></div><div class="cell" title="feather/outline/user 占框18/24 复杂度10"><svg xmlns="http://www.w3.org/2000/svg"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><b>user</b><i>feather</i></div><div class="cell" title="heroicons/outline/user 占框20/24 复杂度8"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke- stroke="currentColor" aria-hidden="true" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
+</svg><b>user</b><i>heroicons</i></div><div class="cell" title="tabler/outline/file-text 占框18/24 复杂度19"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+  <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" />
+  <path d="M9 9l1 0" />
+  <path d="M9 13l6 0" />
+  <path d="M9 17l6 0" />
+</svg><b>file-text</b><i>tabler</i></div><div class="cell" title="lucide/outline/file-text 占框20/24 复杂度21"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+  <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+  <path d="M10 9H8" />
+  <path d="M16 13H8" />
+  <path d="M16 17H8" />
+</svg><b>file-text</b><i>lucide</i></div><div class="cell" title="feather/outline/file-text 占框20/24 复杂度15"><svg xmlns="http://www.w3.org/2000/svg"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><b>file-text</b><i>feather</i></div><div class="cell" title="tabler/outline/cloud 占框20/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878" />
+</svg><b>cloud</b><i>tabler</i></div><div class="cell" title="lucide/outline/cloud 占框20/24 复杂度6"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+</svg><b>cloud</b><i>lucide</i></div><div class="cell" title="feather/outline/cloud 占框22/24 复杂度6"><svg xmlns="http://www.w3.org/2000/svg"   viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg><b>cloud</b><i>feather</i></div><div class="cell" title="heroicons/outline/cloud 占框20/24 复杂度6"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke- stroke="currentColor" aria-hidden="true" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15a4.5 4.5 0 0 0 4.5 4.5H18a3.75 3.75 0 0 0 1.332-7.257 3 3 0 0 0-3.758-3.848 5.25 5.25 0 0 0-10.233 2.33A4.502 4.502 0 0 0 2.25 15Z"/>
+</svg><b>cloud</b><i>heroicons</i></div></div></section><section><h2>② AI 味过重（星芒/大脑/机器人/魔法/灯泡/火箭/笑脸）</h2><div class="grid"><div class="cell" title="tabler/outline/sparkles 占框17/24 复杂度15"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2m-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6" />
+</svg><b>sparkles</b><i>tabler</i></div><div class="cell" title="tabler/outline/sparkles-2 占框19/24 复杂度26"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 6a9.3 9.3 0 0 0 1.516 -.546c.911 -.438 1.494 -1.015 1.937 -1.932c.207 -.428 .382 -.928 .547 -1.522c.165 .595 .34 1.095 .547 1.521c.443 .918 1.026 1.495 1.937 1.933c.426 .205 .925 .38 1.516 .546a9.3 9.3 0 0 0 -1.516 .547c-.911 .438 -1.494 1.015 -1.937 1.932a9 9 0 0 0 -.547 1.521c-.165 -.594 -.34 -1.095 -.547 -1.521c-.443 -.918 -1.026 -1.494 -1.937 -1.932a9 9 0 0 0 -1.516 -.547" />
+  <path d="M3 14a21 21 0 0 0 1.652 -.532c2.542 -.953 3.853 -2.238 4.816 -4.806a20 20 0 0 0 .532 -1.662a20 20 0 0 0 .532 1.662c.963 2.567 2.275 3.853 4.816 4.806q .75 .28 1.652 .532a21 21 0 0 0 -1.652 .532c-2.542 .953 -3.854 2.238 -4.816 4.806a20 20 0 0 0 -.532 1.662a20 20 0 0 0 -.532 -1.662c-.963 -2.568 -2.275 -3.853 -4.816 -4.806a21 21 0 0 0 -1.652 -.532" />
+</svg><b>sparkles-2</b><i>tabler</i></div><div class="cell" title="tabler/outline/stars 占框20/24 复杂度48"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17.8 19.817l-2.172 1.138a.392 .392 0 0 1 -.568 -.41l.415 -2.411l-1.757 -1.707a.389 .389 0 0 1 .217 -.665l2.428 -.352l1.086 -2.193a.392 .392 0 0 1 .702 0l1.086 2.193l2.428 .352a.39 .39 0 0 1 .217 .665l-1.757 1.707l.414 2.41a.39 .39 0 0 1 -.567 .411l-2.172 -1.138" />
+  <path d="M6.2 19.817l-2.172 1.138a.392 .392 0 0 1 -.568 -.41l.415 -2.411l-1.757 -1.707a.389 .389 0 0 1 .217 -.665l2.428 -.352l1.086 -2.193a.392 .392 0 0 1 .702 0l1.086 2.193l2.428 .352a.39 .39 0 0 1 .217 .665l-1.757 1.707l.414 2.41a.39 .39 0 0 1 -.567 .411l-2.172 -1.138" />
+  <path d="M12 9.817l-2.172 1.138a.392 .392 0 0 1 -.568 -.41l.415 -2.411l-1.757 -1.707a.389 .389 0 0 1 .217 -.665l2.428 -.352l1.086 -2.193a.392 .392 0 0 1 .702 0l1.086 2.193l2.428 .352a.39 .39 0 0 1 .217 .665l-1.757 1.707l.414 2.41a.39 .39 0 0 1 -.567 .411l-2.172 -1.138" />
+</svg><b>stars</b><i>tabler</i></div><div class="cell" title="tabler/outline/star 占框20/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245" />
+</svg><b>star</b><i>tabler</i></div><div class="cell" title="tabler/outline/brain 占框18/24 复杂度23"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M15.5 13a3.5 3.5 0 0 0 -3.5 3.5v1a3.5 3.5 0 0 0 7 0v-1.8" />
+  <path d="M8.5 13a3.5 3.5 0 0 1 3.5 3.5v1a3.5 3.5 0 0 1 -7 0v-1.8" />
+  <path d="M17.5 16a3.5 3.5 0 0 0 0 -7h-.5" />
+  <path d="M19 9.3v-2.8a3.5 3.5 0 0 0 -7 0" />
+  <path d="M6.5 16a3.5 3.5 0 0 1 0 -7h.5" />
+  <path d="M5 9.3v-2.8a3.5 3.5 0 0 1 7 0v10" />
+</svg><b>brain</b><i>tabler</i></div><div class="cell" title="lucide/outline/brain-cog 占框21/24 复杂度27"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="m10.852 14.772-.383.923" />
+  <path d="m10.852 9.228-.383-.923" />
+  <path d="m13.148 14.772.382.924" />
+  <path d="m13.531 8.305-.383.923" />
+  <path d="m14.772 10.852.923-.383" />
+  <path d="m14.772 13.148.923.383" />
+  <path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 0 0-5.63-1.446 3 3 0 0 0-.368 1.571 4 4 0 0 0-2.525 5.771" />
+  <path d="M17.998 5.125a4 4 0 0 1 2.525 5.771" />
+  <path d="M19.505 10.294a4 4 0 0 1-1.5 7.706" />
+  <path d="M4.032 17.483A4 4 0 0 0 11.464 20c.18-.311.892-.311 1.072 0a4 4 0 0 0 7.432-2.516" />
+  <path d="M4.5 10.291A4 4 0 0 0 6 18" />
+  <path d="M6.002 5.125a3 3 0 0 0 .4 1.375" />
+  <path d="m9.228 10.852-.923-.383" />
+  <path d="m9.228 13.148-.923.383" />
+  <circle cx="12" cy="12" r="3" />
+</svg><b>brain-cog</b><i>lucide</i></div><div class="cell" title="tabler/outline/robot 占框19/24 复杂度25"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 6a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2l0 -4" />
+  <path d="M12 2v2" />
+  <path d="M9 12v9" />
+  <path d="M15 12v9" />
+  <path d="M5 16l4 -2" />
+  <path d="M15 14l4 2" />
+  <path d="M9 18h6" />
+  <path d="M10 8v.01" />
+  <path d="M14 8v.01" />
+</svg><b>robot</b><i>tabler</i></div><div class="cell" title="tabler/outline/robot-face 占框18/24 复杂度20"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2" />
+  <path d="M9 16c1 .667 2 1 3 1s2 -.333 3 -1" />
+  <path d="M9 7l-1 -4" />
+  <path d="M15 7l1 -4" />
+  <path d="M9 12v-1" />
+  <path d="M15 12v-1" />
+</svg><b>robot-face</b><i>tabler</i></div><div class="cell" title="tabler/outline/ai 占框8/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 16v-6a2 2 0 1 1 4 0v6" />
+  <path d="M8 13h4" />
+  <path d="M16 8v8" />
+</svg><b>ai</b><i>tabler</i></div><div class="cell" title="tabler/outline/ai-agent 占框17/24 复杂度30"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M11 14a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M6 14a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M16 14a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M13.5 9.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M8.5 9.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M13.5 18.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M8.5 18.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M3.5 18.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+  <path d="M18.5 18.5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+</svg><b>ai-agent</b><i>tabler</i></div><div class="cell" title="tabler/outline/crystal-ball 占框18/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6.73 17.018a8 8 0 1 1 10.54 0" />
+  <path d="M5 19a2 2 0 0 0 2 2h10a2 2 0 1 0 0 -4h-10a2 2 0 0 0 -2 2" />
+  <path d="M11 7a3 3 0 0 0 -3 3" />
+</svg><b>crystal-ball</b><i>tabler</i></div><div class="cell" title="tabler/outline/bulb 占框18/24 复杂度17"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" />
+  <path d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" />
+  <path d="M9.7 17l4.6 0" />
+</svg><b>bulb</b><i>tabler</i></div><div class="cell" title="tabler/outline/rocket 占框16/24 复杂度13"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 13a8 8 0 0 1 7 7a6 6 0 0 0 3 -5a9 9 0 0 0 6 -8a3 3 0 0 0 -3 -3a9 9 0 0 0 -8 6a6 6 0 0 0 -5 3" />
+  <path d="M7 14a6 6 0 0 0 -3 6a6 6 0 0 0 6 -3" />
+  <path d="M14 9a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+</svg><b>rocket</b><i>tabler</i></div><div class="cell" title="tabler/outline/confetti 占框17/24 复杂度23"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 5h2" />
+  <path d="M5 4v2" />
+  <path d="M11.5 4l-.5 2" />
+  <path d="M18 5h2" />
+  <path d="M19 4v2" />
+  <path d="M15 9l-1 1" />
+  <path d="M18 13l2 -.5" />
+  <path d="M18 19h2" />
+  <path d="M19 18v2" />
+  <path d="M14 16.518l-6.518 -6.518l-4.39 9.58a1 1 0 0 0 1.329 1.329l9.579 -4.39" />
+</svg><b>confetti</b><i>tabler</i></div><div class="cell" title="tabler/outline/mood-smile 占框18/24 复杂度9"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+  <path d="M9 10l.01 0" />
+  <path d="M15 10l.01 0" />
+  <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+</svg><b>mood-smile</b><i>tabler</i></div><div class="cell" title="tabler/outline/mood-happy 占框18/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+  <path d="M9 9l.01 0" />
+  <path d="M15 9l.01 0" />
+  <path d="M8 13a4 4 0 1 0 8 0h-8" />
+</svg><b>mood-happy</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-openai 占框21/24 复杂度26"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M11.217 19.384a3.501 3.501 0 0 0 6.783 -1.217v-5.167l-6 -3.35" />
+  <path d="M5.214 15.014a3.501 3.501 0 0 0 4.446 5.266l4.34 -2.534v-6.946" />
+  <path d="M6 7.63c-1.391 -.236 -2.787 .395 -3.534 1.689a3.474 3.474 0 0 0 1.271 4.745l4.263 2.514l6 -3.348" />
+  <path d="M12.783 4.616a3.501 3.501 0 0 0 -6.783 1.217v5.067l6 3.45" />
+  <path d="M18.786 8.986a3.501 3.501 0 0 0 -4.446 -5.266l-4.34 2.534v6.946" />
+  <path d="M18 16.302c1.391 .236 2.787 -.395 3.534 -1.689a3.474 3.474 0 0 0 -1.271 -4.745l-4.308 -2.514l-5.955 3.42" />
+</svg><b>brand-openai</b><i>tabler</i></div><div class="cell" title="tabler/outline/bubble-text 占框20/24 复杂度13"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 10h10" />
+  <path d="M9 14h5" />
+  <path d="M12.4 3a5.34 5.34 0 0 1 4.906 3.239a5.333 5.333 0 0 1 -1.195 10.6a4.26 4.26 0 0 1 -5.28 1.863l-3.831 2.298v-3.134a2.668 2.668 0 0 1 -1.795 -3.773a4.8 4.8 0 0 1 2.908 -8.933a5.33 5.33 0 0 1 4.287 -2.16" />
+</svg><b>bubble-text</b><i>tabler</i></div><div class="cell" title="tabler/outline/zzz 占框16/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 12h6l-6 8h6" />
+  <path d="M14 4h6l-6 8h6" />
+</svg><b>zzz</b><i>tabler</i></div></div></section><section><h2>③ 粗糙：图形只占画框一半（放进同尺寸图标位会明显偏小）</h2><div class="grid"><div class="cell" title="tabler/outline/ai 占框8/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 16v-6a2 2 0 1 1 4 0v6" />
+  <path d="M8 13h4" />
+  <path d="M16 8v8" />
+</svg><b>ai</b><i>tabler</i><em>8/24</em></div><div class="cell" title="tabler/outline/alert-small 占框8/24 复杂度4"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12 8v4" />
+  <path d="M12 16h.01" />
+</svg><b>alert-small</b><i>tabler</i><em>8/24</em></div><div class="cell" title="tabler/outline/alpha 占框13/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M18.1 6c-1.1 2.913 -1.9 4.913 -2.4 6c-1.879 4.088 -3.713 6 -6 6c-2.4 0 -4.8 -2.4 -4.8 -6s2.4 -6 4.8 -6c2.267 0 4.135 1.986 6 6c.512 1.102 1.312 3.102 2.4 6" />
+</svg><b>alpha</b><i>tabler</i><em>13/24</em></div><div class="cell" title="tabler/outline/alphabet-hebrew 占框12/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 6c2.333 5.143 6.611 6.857 9.333 12" />
+  <path d="M13.667 14c2.505 -1.5 2.666 -4.141 2.666 -5.333c0 -1.778 -.443 -2.667 -.443 -2.667" />
+  <path d="M7.485 18s-.485 -.905 -.485 -2.714c0 -1.172 .164 -3.722 2.641 -5.27" />
+</svg><b>alphabet-hebrew</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/alphabet-polish 占框13/24 复杂度13"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 10h2a2 2 0 0 1 2 2v5h-3a2 2 0 1 1 0 -4h3" />
+  <path d="M16 7v10" />
+  <path d="M18 11l-4 2" />
+  <path d="M10.5 17a1.5 1.5 0 0 0 0 3" />
+</svg><b>alphabet-polish</b><i>tabler</i><em>13/24</em></div><div class="cell" title="tabler/outline/alphabet-thai 占框12/24 复杂度14"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 18v-3.444c0 -.49 .165 -.924 .494 -1.363c.326 -.449 1.009 -.76 1.506 -.934c.032 -.011 .035 -.079 .004 -.095c-.434 -.22 -1.294 -.52 -1.626 -1.032l-.014 -.021l-.083 -.125c-.281 -.42 -.281 -1.246 -.281 -1.246c0 -1.456 .849 -2.62 1.837 -3.199q .9 -.54 2.137 -.541q 1.077 0 1.995 .47c1.328 .647 2.031 2.202 2.031 3.976v7.554" />
+</svg><b>alphabet-thai</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/antenna-bars-1 占框12/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 18l0 .01" />
+  <path d="M10 18l0 .01" />
+  <path d="M14 18l0 .01" />
+  <path d="M18 18l0 .01" />
+</svg><b>antenna-bars-1</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/antenna-bars-2 占框12/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 18l0 -3" />
+  <path d="M10 18l0 .01" />
+  <path d="M14 18l0 .01" />
+  <path d="M18 18l0 .01" />
+</svg><b>antenna-bars-2</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/antenna-bars-3 占框12/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 18l0 -3" />
+  <path d="M10 18l0 -6" />
+  <path d="M14 18l0 .01" />
+  <path d="M18 18l0 .01" />
+</svg><b>antenna-bars-3</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/antenna-bars-4 占框12/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 18l0 -3" />
+  <path d="M10 18l0 -6" />
+  <path d="M14 18l0 -9" />
+  <path d="M18 18l0 .01" />
+</svg><b>antenna-bars-4</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/antenna-bars-5 占框12/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 18l0 -3" />
+  <path d="M10 18l0 -6" />
+  <path d="M14 18l0 -9" />
+  <path d="M18 18l0 -12" />
+</svg><b>antenna-bars-5</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/arrow-badge-down 占框10/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17 13v-6l-5 4l-5 -4v6l5 4l5 -4" />
+</svg><b>arrow-badge-down</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/arrow-badge-left 占框10/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M11 17h6l-4 -5l4 -5h-6l-4 5l4 5" />
+</svg><b>arrow-badge-left</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/arrow-badge-right 占框10/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M13 7h-6l4 5l-4 5h6l4 -5l-4 -5" />
+</svg><b>arrow-badge-right</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/arrow-badge-up 占框10/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17 11v6l-5 -4l-5 4v-6l5 -4l5 4" />
+</svg><b>arrow-badge-up</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/arrow-down-left-circle 占框13/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M15.536 8.464l-9.536 9.536" />
+  <path d="M6 14v4h4" />
+  <path d="M15.586 8.414a2 2 0 1 0 2.828 -2.828a2 2 0 0 0 -2.828 2.828" />
+</svg><b>arrow-down-left-circle</b><i>tabler</i><em>13/24</em></div><div class="cell" title="tabler/outline/arrow-down-left 占框10/24 复杂度5"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17 7l-10 10" />
+  <path d="M16 17l-9 0l0 -9" />
+</svg><b>arrow-down-left</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/arrow-down-right-circle 占框13/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8.464 8.464l9.536 9.536" />
+  <path d="M14 18h4v-4" />
+  <path d="M8.414 8.414a2 2 0 1 0 -2.828 -2.828a2 2 0 0 0 2.828 2.828" />
+</svg><b>arrow-down-right-circle</b><i>tabler</i><em>13/24</em></div><div class="cell" title="tabler/outline/arrow-down-right 占框10/24 复杂度5"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 7l10 10" />
+  <path d="M17 8l0 9l-9 0" />
+</svg><b>arrow-down-right</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/arrow-sharp-turn-left 占框12/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17 18v-11.31a.7 .7 0 0 0 -1.195 -.495l-9.805 9.805" />
+  <path d="M11 16h-5v-5" />
+</svg><b>arrow-sharp-turn-left</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/arrow-sharp-turn-right 占框12/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 18v-11.31a.7 .7 0 0 1 1.195 -.495l9.805 9.805" />
+  <path d="M13 16h5v-5" />
+</svg><b>arrow-sharp-turn-right</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/arrow-up-left-circle 占框13/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M15.536 15.536l-9.536 -9.536" />
+  <path d="M10 6h-4v4" />
+  <path d="M15.586 15.586a2 2 0 1 0 2.828 2.828a2 2 0 0 0 -2.828 -2.828" />
+</svg><b>arrow-up-left-circle</b><i>tabler</i><em>13/24</em></div><div class="cell" title="tabler/outline/arrow-up-left 占框10/24 复杂度5"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 7l10 10" />
+  <path d="M16 7l-9 0l0 9" />
+</svg><b>arrow-up-left</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/arrow-up-right-circle 占框13/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8.464 15.536l9.536 -9.536" />
+  <path d="M18 10v-4h-4" />
+  <path d="M8.414 15.586a2 2 0 1 0 -2.828 2.828a2 2 0 0 0 2.828 -2.828" />
+</svg><b>arrow-up-right-circle</b><i>tabler</i><em>13/24</em></div><div class="cell" title="tabler/outline/arrow-up-right 占框10/24 复杂度5"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17 7l-10 10" />
+  <path d="M8 7l9 0l0 9" />
+</svg><b>arrow-up-right</b><i>tabler</i><em>10/24</em></div><div class="cell" title="tabler/outline/caret-down 占框12/24 复杂度4"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 10l6 6l6 -6h-12" />
+</svg><b>caret-down</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/caret-left 占框12/24 复杂度4"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 6l-6 6l6 6v-12" />
+</svg><b>caret-left</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/caret-right 占框12/24 复杂度4"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10 18l6 -6l-6 -6v12" />
+</svg><b>caret-right</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/caret-up 占框12/24 复杂度4"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M18 14l-6 -6l-6 6h12" />
+</svg><b>caret-up</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/chevron-down-left 占框8/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 8v8h8" />
+</svg><b>chevron-down-left</b><i>tabler</i><em>8/24</em></div><div class="cell" title="tabler/outline/chevron-down-right 占框8/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M16 8v8h-8" />
+</svg><b>chevron-down-right</b><i>tabler</i><em>8/24</em></div><div class="cell" title="tabler/outline/chevron-down 占框12/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 9l6 6l6 -6" />
+</svg><b>chevron-down</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/chevron-left-pipe 占框12/24 复杂度5"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 6v12" />
+  <path d="M18 6l-6 6l6 6" />
+</svg><b>chevron-left-pipe</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/chevron-left 占框12/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M15 6l-6 6l6 6" />
+</svg><b>chevron-left</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/chevron-right-pipe 占框13/24 复杂度5"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 6l6 6l-6 6" />
+  <path d="M17 5v13" />
+</svg><b>chevron-right-pipe</b><i>tabler</i><em>13/24</em></div><div class="cell" title="tabler/outline/chevron-right 占框12/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M9 6l6 6l-6 6" />
+</svg><b>chevron-right</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/chevron-up-left 占框8/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 16v-8h8" />
+</svg><b>chevron-up-left</b><i>tabler</i><em>8/24</em></div><div class="cell" title="tabler/outline/chevron-up-right 占框8/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 8h8v8" />
+</svg><b>chevron-up-right</b><i>tabler</i><em>8/24</em></div><div class="cell" title="tabler/outline/chevron-up 占框12/24 复杂度3"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M6 15l6 -6l6 6" />
+</svg><b>chevron-up</b><i>tabler</i><em>12/24</em></div><div class="cell" title="tabler/outline/chevrons-down-left 占框12/24 复杂度6"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M11 5v8h8" />
+  <path d="M7 9v8h8" />
+</svg><b>chevrons-down-left</b><i>tabler</i><em>12/24</em></div></div></section><section><h2>④ 噪声：第三方品牌 logo（brand-*）</h2><div class="grid"><div class="cell" title="tabler/outline/brand-4chan 占框18/24 复杂度59"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 11s6.054 -1.05 6 -4.5c-.038 -2.324 -2.485 -3.19 -3.016 -1.5c0 0 -.502 -2 -2.01 -2c-1.508 0 -2.984 3 -.974 8" />
+  <path d="M13.98 11s6.075 -1.05 6.02 -4.5c-.038 -2.324 -2.493 -3.19 -3.025 -1.5c0 0 -.505 -2 -2.017 -2c-1.513 0 -3 3 -.977 8l-.001 0" />
+  <path d="M13 13.98l.062 .309l.081 .35l.075 .29l.092 .328l.11 .358l.061 .188l.139 .392c.64 1.73 1.841 3.837 3.88 3.805c2.324 -.038 3.19 -2.493 1.5 -3.025l.148 -.045l.165 -.058a4.13 4.13 0 0 0 .098 -.039l.222 -.098c.586 -.28 1.367 -.832 1.367 -1.777c0 -1.513 -3 -3 -8 -.977" />
+  <path d="M10.02 13l-.309 .062l-.35 .081l-.29 .075l-.328 .092l-.358 .11l-.188 .061l-.392 .139c-1.73 .64 -3.837 1.84 -3.805 3.88c.038 2.324 2.493 3.19 3.025 1.5l.045 .148l.058 .165l.039 .098l.098 .222c.28 .586 .832 1.367 1.777 1.367c1.513 0 3 -3 .977 -8" />
+  <path d="M11 10.02l-.062 -.309l-.081 -.35l-.075 -.29l-.092 -.328l-.11 -.358l-.128 -.382l-.148 -.399c-.658 -1.687 -1.844 -3.634 -3.804 -3.604c-2.324 .038 -3.19 2.493 -1.5 3.025l-.148 .045l-.164 .058a4.13 4.13 0 0 0 -.1 .039l-.22 .098c-.588 .28 -1.368 .832 -1.368 1.777c0 1.513 3 3 8 .977" />
+</svg><b>brand-4chan</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-abstract 占框18/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12 3c7.2 0 9 1.8 9 9c0 7.2 -1.8 9 -9 9c-7.2 0 -9 -1.8 -9 -9c0 -7.2 1.8 -9 9 -9" />
+  <path d="M8 13.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0" />
+  <path d="M8 8h8v8" />
+</svg><b>brand-abstract</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adobe-after-effects 占框18/24 复杂度28"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12c0 -4.243 0 -6.364 1.318 -7.682s3.44 -1.318 7.682 -1.318s6.364 0 7.682 1.318s1.318 3.44 1.318 7.682s0 6.364 -1.318 7.682s-3.44 1.318 -7.682 1.318s-6.364 0 -7.682 -1.318s-1.318 -3.44 -1.318 -7.682" />
+  <path d="M12 15.79l-.82 -2.653m-4.864 2.652l.82 -2.652m0 0l.686 -2.218c.559 -1.806 .838 -2.708 1.336 -2.708s.777 .902 1.335 2.708l.686 2.218m-4.043 0h4.043" />
+  <path d="M13.895 12.824v1.07a1.895 1.895 0 0 0 3.54 .942m-3.54 -2.012v-.824a1.895 1.895 0 1 1 3.79 0v.824l-3.79 0" />
+</svg><b>brand-adobe-after-effects</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adobe-illustrator 占框18/24 复杂度24"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12c0 -4.243 0 -6.364 1.318 -7.682s3.44 -1.318 7.682 -1.318s6.364 0 7.682 1.318s1.318 3.44 1.318 7.682s0 6.364 -1.318 7.682s-3.44 1.318 -7.682 1.318s-6.364 0 -7.682 -1.318s-1.318 -3.44 -1.318 -7.682" />
+  <path d="M12.947 15.79l-.82 -2.653m-4.864 2.652l.82 -2.652m0 0l.687 -2.218c.558 -1.806 .838 -2.708 1.335 -2.708c.498 0 .777 .902 1.336 2.708l.686 2.218m-4.043 0h4.043" />
+  <path d="M15.789 15.789v-4.736" />
+  <path d="M15.789 8.684v-.473" />
+</svg><b>brand-adobe-illustrator</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adobe-indesign 占框18/24 复杂度21"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12c0 -4.243 0 -6.364 1.318 -7.682s3.44 -1.318 7.682 -1.318s6.364 0 7.682 1.318s1.318 3.44 1.318 7.682s0 6.364 -1.318 7.682s-3.44 1.318 -7.682 1.318s-6.364 0 -7.682 -1.318s-1.318 -3.44 -1.318 -7.682" />
+  <path d="M15 11v4c0 1.1 -.657 .997 -1.6 .997a2.35 2.35 0 0 1 -1.697 -.731a2.55 2.55 0 0 1 -.703 -1.767c0 -.663 .253 -1.299 .703 -1.767a2.35 2.35 0 0 1 1.697 -.732h1.6" />
+  <path d="M15 11v-3" />
+  <path d="M8 8v8" />
+</svg><b>brand-adobe-indesign</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adobe-photoshop 占框18/24 复杂度26"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12c0 -4.243 0 -6.364 1.318 -7.682s3.44 -1.318 7.682 -1.318s6.364 0 7.682 1.318s1.318 3.44 1.318 7.682s0 6.364 -1.318 7.682s-3.44 1.318 -7.682 1.318s-6.364 0 -7.682 -1.318s-1.318 -3.44 -1.318 -7.682" />
+  <path d="M6.79 15.79v-3.79m0 0v-2.724c0 -.11 0 -.165 .004 -.211c.044 -.45 .4 -.806 .85 -.85c.046 -.004 .101 -.004 .211 -.004h1.303a1.895 1.895 0 1 1 0 3.789l-2.368 0" />
+  <path d="M17.178 11.263c-.164 -.659 -.935 -1.158 -1.862 -1.158c-1.047 0 -1.895 .637 -1.895 1.421c0 .785 .848 1.421 1.895 1.421c1.046 0 1.895 .637 1.895 1.421c0 .785 -.849 1.421 -1.895 1.421c-.93 0 -1.704 -.502 -1.864 -1.165" />
+</svg><b>brand-adobe-photoshop</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adobe-premiere 占框18/24 复杂度24"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12c0 -4.243 0 -6.364 1.318 -7.682s3.44 -1.318 7.682 -1.318s6.364 0 7.682 1.318s1.318 3.44 1.318 7.682s0 6.364 -1.318 7.682s-3.44 1.318 -7.682 1.318s-6.364 0 -7.682 -1.318s-1.318 -3.44 -1.318 -7.682" />
+  <path d="M7.263 15.79v-3.79m0 0v-3.248c0 -.335 .222 -.541 .542 -.541h1.353a1.895 1.895 0 1 1 0 3.789l-1.895 0" />
+  <path d="M13.895 10.579v1.895m0 0v3.315m0 -3.315c.531 -.709 1.026 -1.592 1.894 -1.832q .22 -.062 .474 -.063" />
+</svg><b>brand-adobe-premiere</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adobe-xd 占框18/24 复杂度20"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12c0 -4.243 0 -6.364 1.318 -7.682s3.44 -1.318 7.682 -1.318s6.364 0 7.682 1.318s1.318 3.44 1.318 7.682s0 6.364 -1.318 7.682s-3.44 1.318 -7.682 1.318s-6.364 0 -7.682 -1.318s-1.318 -3.44 -1.318 -7.682" />
+  <path d="M6 8l5 8" />
+  <path d="M6 16l5 -8" />
+  <path d="M18 11v4c0 1.1 -.517 .997 -1.5 .997a2.5 2.5 0 0 1 -2.5 -2.497a2.5 2.5 0 0 1 2.5 -2.5l1.5 0v-3" />
+</svg><b>brand-adobe-xd</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adobe 占框18/24 复杂度15"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12.893 4.514l7.977 14a.993 .993 0 0 1 -.394 1.365a1.04 1.04 0 0 1 -.5 .127h-3.476l-4.5 -8l-2.5 4h1.5l2 4h-8.977c-.565 0 -1.023 -.45 -1.023 -1c0 -.171 .045 -.34 .13 -.49l7.977 -13.993a1.034 1.034 0 0 1 1.786 0l0 -.009" />
+</svg><b>brand-adobe</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-adonis-js 占框18/24 复杂度17"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12 3c7.2 0 9 1.8 9 9c0 7.2 -1.8 9 -9 9c-7.2 0 -9 -1.8 -9 -9c0 -7.2 1.8 -9 9 -9" />
+  <path d="M8.863 16.922c1.137 -.422 1.637 -.922 3.137 -.922s2 .5 3.138 .922c.713 .264 1.516 -.102 1.778 -.772c.126 -.32 .11 -.673 -.044 -.983l-3.708 -7.474c-.297 -.598 -1.058 -.859 -1.7 -.583a1.24 1.24 0 0 0 -.627 .583l-3.709 7.474c-.321 .648 -.017 1.415 .679 1.714c.332 .143 .715 .167 1.056 .04l0 .001" />
+</svg><b>brand-adonis-js</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-airbnb 占框18/24 复杂度15"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M12 10c-2 0 -3 1 -3 3c0 1.5 1.494 3.535 3 5.5c1 1 1.5 1.5 2.5 2s2.5 1 4.5 -.5s1.5 -3.5 .5 -6s-2.333 -5.5 -5 -9.5c-.834 -1 -1.5 -1.5 -2.503 -1.5c-1 0 -1.623 .45 -2.497 1.5c-2.667 4 -4 7 -5 9.5s-1.5 4.5 .5 6s3.5 1 4.5 .5s1.5 -1 2.5 -2c1.506 -1.965 3 -4 3 -5.5c0 -2 -1 -3 -3 -3" />
+</svg><b>brand-airbnb</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-airtable 占框18/24 复杂度15"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 10v8l7 -3v-2.6l-7 -2.4" />
+  <path d="M3 6l9 3l9 -3l-9 -3l-9 3" />
+  <path d="M14 12.3v8.7l7 -3v-8l-7 2.3" />
+</svg><b>brand-airtable</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-algolia 占框16/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M15.5 11c-.414 -1.477 -1.886 -2.5 -3.5 -2.5a3.47 3.47 0 0 0 -3.5 3.5a3.47 3.47 0 0 0 3.5 3.5c.974 0 1.861 -.357 2.5 -1l4.5 4.5v-15h-7c-4.386 0 -8 3.582 -8 8s3.614 8 8 8a7.577 7.577 0 0 0 2.998 -.614" />
+</svg><b>brand-algolia</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-alipay 占框18/24 复杂度18"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M19 3h-14a2 2 0 0 0 -2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2 -2v-14a2 2 0 0 0 -2 -2" />
+  <path d="M7 7h10" />
+  <path d="M12 3v7" />
+  <path d="M21 17.314c-2.971 -1.923 -15 -8.779 -15 -1.864c0 1.716 1.52 2.55 2.985 2.55c3.512 0 6.814 -5.425 6.814 -8h-6.604" />
+</svg><b>brand-alipay</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-alpine-js 占框18/24 复杂度9"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 11.5l4.5 4.5h9l-9 -9l-4.5 4.5" />
+  <path d="M16.5 16l4.5 -4.5l-4.5 -4.5l-4.5 4.5" />
+</svg><b>brand-alpine-js</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-amazon 占框18/24 复杂度6"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M17 12.5a15.198 15.198 0 0 1 -7.37 1.44a14.62 14.62 0 0 1 -6.63 -2.94" />
+  <path d="M19.5 15c.907 -1.411 1.451 -3.323 1.5 -5c-1.197 -.773 -2.577 -.935 -4 -1" />
+</svg><b>brand-amazon</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-amd 占框18/24 复杂度20"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M16 16v-7c0 -.566 -.434 -1 -1 -1h-7l-5 -5h17c.566 0 1 .434 1 1v17l-5 -5" />
+  <path d="M11.293 20.707l4.707 -4.707h-7a1 1 0 0 1 -1 -1v-7l-4.707 4.707a1 1 0 0 0 -.293 .707v6.586a1 1 0 0 0 1 1h6.586a1 1 0 0 0 .707 -.293" />
+</svg><b>brand-amd</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-amie 占框19/24 复杂度13"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 8.5c0 1.33 .472 2.55 1.257 3.5a5.5 5.5 0 0 0 7.743 7.743a5.5 5.5 0 0 0 7.743 -7.743a5.5 5.5 0 0 0 -7.743 -7.743a5.5 5.5 0 0 0 -9 4.243" />
+  <path d="M10 9.5c0 -.828 .895 -1.5 2 -1.5s2 .672 2 1.5v5c0 .828 -.895 1.5 -2 1.5s-2 -.672 -2 -1.5l0 -5" />
+</svg><b>brand-amie</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-amigo 占框22/24 复杂度12"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  <path d="M9.591 3.635l-7.13 14.082c-1.712 3.38 1.759 5.45 3.69 3.573l1.86 -1.81c3.142 -3.054 4.959 -2.99 8.039 .11l1.329 1.337c2.372 2.387 5.865 .078 4.176 -3.225l-7.195 -14.067c-1.114 -2.18 -3.666 -2.18 -4.77 0" />
+</svg><b>brand-amigo</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-among-us 占框19/24 复杂度20"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10.646 12.774c-1.939 .396 -4.467 .317 -6.234 -.601c-2.454 -1.263 -1.537 -4.66 1.423 -4.982c2.254 -.224 3.814 -.354 5.65 .214c.835 .256 1.93 .569 1.355 3.281c-.191 1.067 -1.07 1.904 -2.194 2.088" />
+  <path d="M5.84 7.132c.083 -.564 .214 -1.12 .392 -1.661c.456 -.936 1.095 -2.068 3.985 -2.456a22.464 22.464 0 0 1 2.867 .08c1.776 .14 2.643 1.234 3.287 3.368c.339 1.157 .46 2.342 .629 3.537v11l-12.704 -.019c-.552 -2.386 -.262 -5.894 .204 -8.481" />
+  <path d="M17 10c.991 .163 2.105 .383 3.069 .67c.255 .13 .52 .275 .534 .505c.264 3.434 .57 7.448 .278 9.825h-3.881" />
+</svg><b>brand-among-us</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-android 占框18/24 复杂度20"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 10l0 6" />
+  <path d="M20 10l0 6" />
+  <path d="M7 9h10v8a1 1 0 0 1 -1 1h-8a1 1 0 0 1 -1 -1v-8a5 5 0 0 1 10 0" />
+  <path d="M8 3l1 2" />
+  <path d="M16 3l-1 2" />
+  <path d="M9 18l0 3" />
+  <path d="M15 18l0 3" />
+</svg><b>brand-android</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-angular 占框18/24 复杂度19"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M5.428 17.245l6.076 3.471a1 1 0 0 0 .992 0l6.076 -3.471a1 1 0 0 0 .495 -.734l1.323 -9.704a1 1 0 0 0 -.658 -1.078l-7.4 -2.612a1 1 0 0 0 -.665 0l-7.399 2.613a1 1 0 0 0 -.658 1.078l1.323 9.704a1 1 0 0 0 .495 .734l0 -.001" />
+  <path d="M9 15l3 -8l3 8" />
+  <path d="M10 13h4" />
+</svg><b>brand-angular</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-ansible 占框18/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+  <path d="M9.647 12.294l6.353 3.706l-4 -9l-4 9" />
+</svg><b>brand-ansible</b><i>tabler</i></div><div class="cell" title="tabler/outline/brand-ao3 占框20/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M2 5c7.109 4.1 10.956 10.131 12 14c1.074 -4.67 4.49 -8.94 8 -11" />
+  <path d="M12 8a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  <path d="M7 9c-.278 5.494 -2.337 7.33 -4 10c4.013 -2 6.02 -5 15.05 -5c4.012 0 3.51 2.5 1 3c2 .5 2.508 5 -2.007 2" />
+</svg><b>brand-ao3</b><i>tabler</i></div></div></section><section><h2>⑤ 噪声：禁用态（-off）/ 数字字母类</h2><div class="grid"><div class="cell" title="tabler/outline/a-b-off 占框18/24 复杂度20"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 16v-5.5a2.5 2.5 0 0 1 5 0v5.5m0 -4h-5" />
+  <path d="M12 12v6" />
+  <path d="M12 6v2" />
+  <path d="M16 8h3a2 2 0 1 1 0 4h-3m3 0a2 2 0 0 1 .83 3.82m-3.83 -3.82v-4" />
+  <path d="M3 3l18 18" />
+</svg><b>a-b-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/abacus-off 占框18/24 复杂度28"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M5 5v16" />
+  <path d="M19 21v-2m0 -4v-12" />
+  <path d="M5 7h2m4 0h8" />
+  <path d="M5 15h10" />
+  <path d="M8 13v4" />
+  <path d="M11 13v4" />
+  <path d="M16 16v1" />
+  <path d="M14 5v4" />
+  <path d="M11 5v2" />
+  <path d="M8 8v1" />
+  <path d="M3 21h18" />
+  <path d="M3 3l18 18" />
+</svg><b>abacus-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/access-point-off 占框18/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 3l18 18" />
+  <path d="M14.828 9.172a4 4 0 0 1 1.172 2.828" />
+  <path d="M17.657 6.343a8 8 0 0 1 1.635 8.952" />
+  <path d="M9.168 14.828a4 4 0 0 1 0 -5.656" />
+  <path d="M6.337 17.657a8 8 0 0 1 0 -11.314" />
+</svg><b>access-point-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/accessible-off 占框19/24 复杂度17"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10 16.5l2 -3l2 3m-2 -3v-1.5m2.627 -1.376l.373 -.124m-6 0l2.231 .744" />
+  <path d="M20.042 16.045a9 9 0 0 0 -12.087 -12.087m-2.318 1.677a9 9 0 1 0 12.725 12.73" />
+  <path d="M12 8a.5 .5 0 1 0 -.5 -.5" />
+  <path d="M3 3l18 18" />
+</svg><b>accessible-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/ad-circle-off 占框20/24 复杂度26"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4.91 4.949a9.968 9.968 0 0 0 -2.91 7.051c0 5.523 4.477 10 10 10a9.968 9.968 0 0 0 7.05 -2.909" />
+  <path d="M20.778 16.793a9.955 9.955 0 0 0 1.222 -4.793c0 -5.523 -4.477 -10 -10 -10c-1.74 0 -3.376 .444 -4.8 1.225" />
+  <path d="M7 15v-4.5a1.5 1.5 0 0 1 2.138 -1.358" />
+  <path d="M9.854 9.853c.094 .196 .146 .415 .146 .647v4.5" />
+  <path d="M7 13h3" />
+  <path d="M14 14v1h1" />
+  <path d="M17 13v-2a2 2 0 0 0 -2 -2h-1v1" />
+  <path d="M3 3l18 18" />
+</svg><b>ad-circle-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/ad-off 占框18/24 复杂度22"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M9 5h10a2 2 0 0 1 2 2v10m-2 2h-14a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2" />
+  <path d="M7 15v-4a2 2 0 0 1 2 -2m2 2v4" />
+  <path d="M7 13h4" />
+  <path d="M17 9v4" />
+  <path d="M16.115 12.131c.33 .149 .595 .412 .747 .74" />
+  <path d="M3 3l18 18" />
+</svg><b>ad-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/address-book-off 占框18/24 复杂度23"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 4h10a2 2 0 0 1 2 2v10m-.57 3.399c-.363 .37 -.87 .601 -1.43 .601h-10a2 2 0 0 1 -2 -2v-12" />
+  <path d="M10 16h6" />
+  <path d="M11 11a2 2 0 0 0 2 2m2 -2a2 2 0 0 0 -2 -2" />
+  <path d="M4 8h3" />
+  <path d="M4 12h3" />
+  <path d="M4 16h3" />
+  <path d="M3 3l18 18" />
+</svg><b>address-book-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/adjustments-off 占框18/24 复杂度27"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M4 10a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+  <path d="M6 6v2" />
+  <path d="M6 12v8" />
+  <path d="M10 16a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+  <path d="M12 4v4m0 4v2" />
+  <path d="M12 18v2" />
+  <path d="M16 7a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+  <path d="M18 4v1" />
+  <path d="M18 9v5m0 4v2" />
+  <path d="M3 3l18 18" />
+</svg><b>adjustments-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/alarm-off 占框18/24 复杂度13"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7.587 7.566a7 7 0 1 0 9.833 9.864m1.35 -2.645a7 7 0 0 0 -8.536 -8.56" />
+  <path d="M12 12v1h1" />
+  <path d="M5.261 5.265l-1.011 .735" />
+  <path d="M17 4l2.75 2" />
+  <path d="M3 3l18 18" />
+</svg><b>alarm-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/album-off 占框18/24 复杂度18"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M8 4h10a2 2 0 0 1 2 2v10m-.581 3.41c-.362 .364 -.864 .59 -1.419 .59h-12a2 2 0 0 1 -2 -2v-12c0 -.552 .224 -1.052 .585 -1.413" />
+  <path d="M12 4v4m1.503 1.497l.497 -.497l2 2v-7" />
+  <path d="M3 3l18 18" />
+</svg><b>album-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/alert-circle-off 占框19/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M5.644 5.629a9 9 0 1 0 12.715 12.741m1.693 -2.349a9 9 0 0 0 -12.087 -12.068" />
+  <path d="M12 7v1" />
+  <path d="M12 16h.01" />
+  <path d="M3 3l18 18" />
+</svg><b>alert-circle-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/alert-hexagon-off 占框20/24 复杂度24"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M18.36 18.387l-5.268 3.333a2.269 2.269 0 0 1 -2.184 0l-6.75 -4.27a2.225 2.225 0 0 1 -1.158 -1.948v-7.285c0 -.809 .443 -1.554 1.158 -1.947l1.317 -.777m2.535 -1.493l2.898 -1.709a2.33 2.33 0 0 1 2.25 0l6.75 3.98h-.033c.7 .398 1.13 1.143 1.125 1.948v7.284c0 .414 -.116 .812 -.326 1.155" />
+  <path d="M12 7v1" />
+  <path d="M12 8v.01" />
+  <path d="M3 3l18 18" />
+  <path d="M12 16h.01" />
+</svg><b>alert-hexagon-off</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-a-small 占框8/24 复杂度6"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10 16v-6a2 2 0 1 1 4 0v6" />
+  <path d="M10 13h4" />
+</svg><b>letter-a-small</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-a 占框16/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 20v-12a4 4 0 0 1 4 -4h2a4 4 0 0 1 4 4v12" />
+  <path d="M7 13l10 0" />
+</svg><b>letter-a</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-b-small 占框8/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10 16h2a2 2 0 1 0 0 -4h-2h2a2 2 0 1 0 0 -4h-2v8" />
+</svg><b>letter-b-small</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-b 占框16/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 20v-16h6a4 4 0 0 1 0 8a4 4 0 0 1 0 8h-6" />
+  <path d="M7 12l6 0" />
+</svg><b>letter-b</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-c-small 占框8/24 复杂度4"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 10a2 2 0 1 0 -4 0v4a2 2 0 1 0 4 0" />
+</svg><b>letter-c-small</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-c 占框16/24 复杂度8"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M18 9a5 5 0 0 0 -5 -5h-2a5 5 0 0 0 -5 5v6a5 5 0 0 0 5 5h2a5 5 0 0 0 5 -5" />
+</svg><b>letter-c</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-case-lower 占框18/24 复杂度10"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 15.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0" />
+  <path d="M10 12v7" />
+  <path d="M14 15.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0" />
+  <path d="M21 12v7" />
+</svg><b>letter-case-lower</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-case-toggle 占框18/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 15.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0" />
+  <path d="M14 19v-10.5a3.5 3.5 0 0 1 7 0v10.5" />
+  <path d="M14 13h7" />
+  <path d="M10 12v7" />
+</svg><b>letter-case-toggle</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-case-upper 占框18/24 复杂度12"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M3 19v-10.5a3.5 3.5 0 0 1 7 0v10.5" />
+  <path d="M3 13h7" />
+  <path d="M14 19v-10.5a3.5 3.5 0 0 1 7 0v10.5" />
+  <path d="M14 13h7" />
+</svg><b>letter-case-upper</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-case 占框18/24 复杂度11"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M14 15.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0" />
+  <path d="M3 19v-10.5a3.5 3.5 0 0 1 7 0v10.5" />
+  <path d="M3 13h7" />
+  <path d="M21 12v7" />
+</svg><b>letter-case</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-d-small 占框8/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M10 8v8h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-2" />
+</svg><b>letter-d-small</b><i>tabler</i></div><div class="cell" title="tabler/outline/letter-d 占框16/24 复杂度7"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  
+  
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+>
+  <path d="M7 4h6a5 5 0 0 1 5 5v6a5 5 0 0 1 -5 5h-6v-16" />
+</svg><b>letter-d</b><i>tabler</i></div></div></section>
+</body></html>

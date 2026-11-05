@@ -1,0 +1,70 @@
+# 写作方向：汇报型
+#
+# 本文件**只放机检项**（`check:` 段，给 qc 读）+ 方向要点。
+# 完整的写作规范在 .pi/skills/ppt-briefing/SKILL.md，通用规则在 ppt-common/SKILL.md ——
+# 2026-09 起 `writing:` 不再重复它们（原来 60 行与 SKILL.md 逐条重复，Agent 每任务要读两遍）。
+#
+# 与研讨型的关键差别**不是配色**，而是容量预算更紧：一页一个主张，细节留给人问。
+name: briefing
+label: 汇报型
+version: 2
+skill: skills/ppt-briefing/SKILL.md   # .pi/tests/briefs.py 会校验它存在，防两边脱节
+
+check:
+  minPages: 6
+  # 页数不设上限（2026-09 起与研讨型一致）：排完大纲若预计超过 askAbove 页，
+  # 先停下来问用户（只讲某几章？拆成多份？还是转研讨型？）。
+  askAbove: 30
+  # 只管 `points`（statement 的支撑论据）。**不要顺手管 chart.insights**：
+  # schema 要求 insights 2~4 条，3 条上限会把合法的 4 条判成超标（局部压过全局）。
+  maxSupportsPerPage: 3
+  # 「不要在标题里用这类无信息量的词」—— 标题要写成主张，不要写成话题
+  titleBlacklist:
+    - 情况介绍
+    - 情况说明
+    - 相关说明
+    - 工作概述
+    - 背景介绍
+    - 简介
+    - 概述
+
+# 速度档的**流程约定**（与研讨型同构；build.py 的 --speed 消费 requireZeroWarnings）。
+# 两档跑同一套 check —— 快档省的是回炉轮次与人工环节，不是检查项。
+speed:
+  slow:   # 默认
+    reviewOutline: true        # **唯一**打断用户的环节
+    skeletonPreview: true      # 内部定稿，不给用户看
+    requireZeroWarnings: true
+    maxRefineRounds: 3
+    notes: true
+  fast:   # 直接出成品
+    reviewOutline: false
+    skeletonPreview: false
+    requireZeroWarnings: false
+    maxRefineRounds: 1
+    notes: false
+
+writing: |
+  受众：决策者 —— 他们只看这一份材料，不会去翻原文。
+  目标：每页一个主张，第一眼就能看懂结论。可以对原文总结与抽象，
+        但要保证**结论有原文数据支撑**，且不因为抽象而失真。
+
+  ① 输入分析（排页之前不可跳过）：落 .pi/work/analysis.md（章节 → 模块 → 核心结论 →
+     论据 → 缺口）；一个模块可压成一页、同类模块可合并，但每条主张都要能在论据列
+     找到出处；「缺口」列有内容时，页面上留一句显式占位（note / footer_note / 待补行）。
+  ② 标题写成**主张**（「资源应继续向县域倾斜」），不写话题（「渠道概况」）；
+     禁「情况介绍」「相关说明」这类无信息量的词（--qc 按 titleBlacklist 点名）。
+  ③ 每页一个主张，支撑它的证据**不超过 3 条**；结论先行、关键数字单独突出。
+  ④ 页面别留大片空白：字段写到接近安全上限；表格行少就补行（优先并关联章节内容），
+     确实没料就补一行显式占位 —— 靠补内容，不靠拉高行高。
+  ⑤ 两块内容一律左右分置（panel_2col / 表格配 side / 图表配右侧洞察），不许上下堆叠；
+     内容太少就**并页**（表格 <5 行、图表数据点 ≤4 且无明细表、panel_2col 单侧要点 <3 条，
+     或 --qc 报「还空 X in」）。
+  ⑥ 抽象有边界：不许**精简过头**、不许把限定条件抽象掉
+     （「试点三省存活率 94%」不能写成「存活率 94%」）；细节留给人问、留给附录。
+  ⑦ 页数由资料量决定、**不设上限**：预计超过 30 页先问用户 ——
+     不要为了"控制在十几页内"把内容砍掉，密度不够时该做的是并页 + 写满。
+
+  其余通用规则（版式字段与容量、结论段 40~80 字、加粗配额、图标一块一个、卡片骨架、
+  一页两个信息块、宁拆页不删内容…）在 .pi/skills/ppt-common/SKILL.md；
+  方向细节在 .pi/skills/ppt-briefing/SKILL.md。三者冲突时以 ppt-common 为准。

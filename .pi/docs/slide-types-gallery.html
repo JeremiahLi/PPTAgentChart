@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PPT Agent 版式画廊 — 15 种布局可视化</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card-bg: #ffffff;
+    --border: #e2e0da;
+    --text: #262b33;
+    --text-sub: #59626d;
+    --text-light: #9aa0a8;
+    --primary: #2760a4;
+    --green: #4a8260;
+    --orange: #b07b35;
+    --purple: #6b60a0;
+    --pink: #ad6483;
+    --cyan: #4389be;
+    --accent: #2760A4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "微软雅黑", "PingFang SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    line-height: 1.6;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    color: var(--text-sub);
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 20px;
+  }
+  .slide-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .slide-header {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .slide-name {
+    font-size: 15px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .slide-badge {
+    font-size: 11px;
+    color: var(--text-sub);
+    background: var(--bg);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 400;
+  }
+  .slide-desc {
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-top: 4px;
+  }
+  .slide-body {
+    padding: 16px;
+  }
+  .slide-body svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .fields {
+    padding: 0 18px 14px;
+  }
+  .fields-title {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .field-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .field-tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text-sub);
+    border: 1px solid var(--border);
+  }
+  .field-tag.req {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #eef4fb;
+  }
+</style>
+</head>
+<body>
+<h1>PPT Agent 版式画廊</h1>
+<p class="subtitle">共 15 种版式 · 16:9 (13.333 × 7.5 in) · 字号单位 pt</p>
+
+<div class="grid">
+
+<!-- cover -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">cover <span class="slide-badge">封面</span></div>
+    <div class="slide-desc">标题 + 英文副题 + 副标题 + 落款</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#1A4269"/>
+      <text x="60" y="140" font-size="36" font-weight="500" fill="FFFFFF">主标题（判断句，2-24 字）</text>
+      <text x="60" y="185" font-size="16" font-weight="400" fill="#C5DCF0">English subtitle 英文副题（可选，≤60 字）</text>
+      <text x="60" y="240" font-size="14" font-weight="400" fill="#CFDCE8">副标题（可选，≤60 字）</text>
+      <text x="60" y="300" font-size="13" font-weight="400" fill="#A9C4DC">落款 / 单位（可选，≤60 字）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 2-24</span>
+      <span class="field-tag">en_title ≤60</span>
+      <span class="field-tag">subtitle ≤60</span>
+      <span class="field-tag">org ≤60</span>
+    </div>
+  </div>
+</div>
+
+<!-- toc -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">toc <span class="slide-badge">目录</span></div>
+    <div class="slide-desc">3-6 章，每章序号 + 标题 + 图标</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="60" y="50" font-size="22" font-weight="500" fill="#262B33">目录</text>
+      <line x1="60" y1="65" x2="620" y2="65" stroke="#E2E0DA"/>
+      <!-- item 1 -->
+      <rect x="60" y="85" width="280" height="50" rx="8" fill="#EEF4FB" stroke="#B5D4F4"/>
+      <text x="85" y="110" font-size="16" font-weight="500" fill="#2760A4">01</text>
+      <text x="120" y="110" font-size="13" fill="#262B33">章节一标题</text>
+      <!-- item 2 -->
+      <rect x="360" y="85" width="280" height="50" rx="8" fill="#E1F5EE" stroke="#9FE1CB"/>
+      <text x="385" y="110" font-size="16" font-weight="500" fill="#4A8260">02</text>
+      <text x="420" y="110" font-size="13" fill="#262B33">章节二标题</text>
+      <!-- item 3 -->
+      <rect x="60" y="150" width="280" height="50" rx="8" fill="#FAECE7" stroke="#F5C4B3"/>
+      <text x="85" y="175" font-size="16" font-weight="500" fill="#B07B35">03</text>
+      <text x="120" y="175" font-size="13" fill="#262B33">章节三标题</text>
+      <!-- item 4 -->
+      <rect x="360" y="150" width="280" height="50" rx="8" fill="#EEEDFE" stroke="#CECBF6"/>
+      <text x="385" y="175" font-size="16" font-weight="500" fill="#6B60A0">04</text>
+      <text x="420" y="175" font-size="13" fill="#262B33">章节四标题</text>
+      <!-- item 5 -->
+      <rect x="60" y="215" width="280" height="50" rx="8" fill="#E6F1FB" stroke="#B5D4F4"/>
+      <text x="85" y="240" font-size="16" font-weight="500" fill="#4389BE">05</text>
+      <text x="120" y="240" font-size="13" fill="#262B33">章节五标题</text>
+      <!-- item 6 -->
+      <rect x="360" y="215" width="280" height="50" rx="8" fill="#FAEEDA" stroke="#FAC775"/>
+      <text x="385" y="240" font-size="16" font-weight="500" fill="#B07B35">06</text>
+      <text x="420" y="240" font-size="13" fill="#262B33">章节六标题</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">items 3-6</span>
+      <span class="field-tag">items[].no ≤2</span>
+      <span class="field-tag req">items[].text 2-20</span>
+      <span class="field-tag">items[].icon</span>
+    </div>
+  </div>
+</div>
+
+<!-- section -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">section <span class="slide-badge">章节页</span></div>
+    <div class="slide-desc">大章节号 + 章标题 + 副标题</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="60" y="160" font-size="80" font-weight="500" fill="#E6F1FB">01</text>
+      <text x="60" y="220" font-size="24" font-weight="500" fill="#262B33">第一章标题</text>
+      <text x="60" y="260" font-size="14" fill="#59626D">副标题 / 章节概述（可选，≤60 字）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">no ≤2</span>
+      <span class="field-tag req">title 2-20</span>
+      <span class="field-tag">subtitle ≤60</span>
+      <span class="field-tag">icon</span>
+    </div>
+  </div>
+</div>
+
+<!-- statement -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">statement <span class="slide-badge">结论页</span></div>
+    <div class="slide-desc">高密度正文 150-700 字 + 高亮卡 + 支撑论据</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <!-- title -->
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">统一评测是智能体工程化的第一道闸门</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- summary -->
+      <rect x="40" y="58" width="600" height="32" rx="4" fill="#F1EFE8"/>
+      <text x="50" y="77" font-size="11" fill="#59626D">标题下的总结陈述段（40-80 字，开口即结论，带数字/口径）</text>
+      <!-- body text (left) -->
+      <rect x="40" y="100" width="360" height="220" rx="4" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="50" y="120" font-size="10" fill="#262B33">正文高密度展开（150-700 字）</text>
+      <text x="50" y="140" font-size="9" fill="#59626D">第一句被自动加粗染色为「关键句」（≤48 字）</text>
+      <rect x="50" y="152" width="340" height="2" fill="#E2E0DA"/>
+      <text x="50" y="170" font-size="9" fill="#262B33">正文段落展开论述，长文标 2 处以上</text>
+      <text x="50" y="185" font-size="9" fill="#262B33">` **关键短语**：正文`（短语与正文同字号、</text>
+      <text x="50" y="198" font-size="9" fill="#262B33">只加粗+强调色，冒号后正文接着排）</text>
+      <rect x="50" y="208" width="340" height="2" fill="#E2E0DA"/>
+      <text x="50" y="225" font-size="9" fill="#262B33">用换行指定卡片边界（最多 3 张卡）</text>
+      <text x="50" y="245" font-size="9" fill="#59626D">关键句不放大字号 — 同字号+加粗+强调色</text>
+      <text x="50" y="265" font-size="9" fill="#59626D">视觉层级：正文 12.5pt，标题 23pt</text>
+      <text x="50" y="285" font-size="9" fill="#59626D">容量：降到 10pt 能装 1000+ 字</text>
+      <text x="50" y="305" font-size="9" fill="#59626D">上限 700 字留出可读余量</text>
+      <!-- highlight (top right) -->
+      <rect x="420" y="100" width="220" height="80" rx="6" fill="#EEF4FB" stroke="#B5D4F4"/>
+      <text x="435" y="120" font-size="9" fill="#59626D">回归通过率</text>
+      <text x="435" y="150" font-size="20" font-weight="500" fill="#2760A4">62% → 88%</text>
+      <text x="435" y="170" font-size="9" fill="#59626D">接入后提升 26 个百分点</text>
+      <!-- points (bottom right) -->
+      <rect x="420" y="195" width="220" height="125" rx="4" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="435" y="215" font-size="10" font-weight="500" fill="#262B33">支撑论据（0-4 条，右栏）</text>
+      <rect x="435" y="225" width="190" height="18" rx="3" fill="#E1F5EE"/>
+      <text x="445" y="238" font-size="9" fill="#4A8260">▸ 口径统一：任务集一处维护</text>
+      <rect x="435" y="248" width="190" height="18" rx="3" fill="#FAEEDA"/>
+      <text x="445" y="261" font-size="9" fill="#B07B35">▸ 回归基线：劣化立即告警</text>
+      <rect x="435" y="271" width="190" height="18" rx="3" fill="#EEEDFE"/>
+      <text x="445" y="284" font-size="9" fill="#6B60A0">▸ 量化归因：失败按维度下钻</text>
+      <!-- footer -->
+      <rect x="40" y="330" width="600" height="20" rx="3" fill="#F1EFE8"/>
+      <text x="50" y="344" font-size="9" fill="#59626D">结论段（footer_note，≤64 字）：先有尺子，再有迭代；评测不是成本，是上线前的保险。</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 8-32 判断句</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">body 80-700</span>
+      <span class="field-tag">highlight</span>
+      <span class="field-tag">points 0-4</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- compare_3col -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">compare_3col <span class="slide-badge">三栏对比</span></div>
+    <div class="slide-desc">3-4 栏并排对比 + 比喻 + 要点</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">三种方案对比</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- col 1 -->
+      <rect x="40" y="58" width="195" height="260" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="40" y="58" width="195" height="6" fill="#2760A4" rx="0"/>
+      <text x="55" y="80" font-size="9" fill="#59626D">方案 A</text>
+      <text x="55" y="100" font-size="12" font-weight="500" fill="#2760A4">核心机制短语</text>
+      <rect x="55" y="110" width="170" height="1" fill="#E2E0DA"/>
+      <text x="55" y="128" font-size="9" fill="#262B33">每栏描述（3栏 ~200 字）</text>
+      <text x="55" y="145" font-size="9" fill="#262B33">渲染器自动降档到 10pt</text>
+      <text x="55" y="162" font-size="9" fill="#262B33">qc 报「约 X 字」为准</text>
+      <rect x="55" y="175" width="170" height="1" fill="#E2E0DA"/>
+      <text x="55" y="192" font-size="9" fill="#4A8260">▸ 特征要点 1</text>
+      <text x="55" y="208" font-size="9" fill="#4A8260">▸ 特征要点 2</text>
+      <text x="55" y="224" font-size="9" fill="#4A8260">▸ 特征要点 3</text>
+      <rect x="55" y="240" width="170" height="20" rx="3" fill="#EEF4FB"/>
+      <text x="65" y="254" font-size="9" fill="#2760A4">💡 生活化比喻</text>
+      <!-- col 2 -->
+      <rect x="245" y="58" width="195" height="260" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="245" y="58" width="195" height="6" fill="#4A8260" rx="0"/>
+      <text x="260" y="80" font-size="9" fill="#59626D">方案 B</text>
+      <text x="260" y="100" font-size="12" font-weight="500" fill="#4A8260">核心机制短语</text>
+      <rect x="260" y="110" width="170" height="1" fill="#E2E0DA"/>
+      <text x="260" y="128" font-size="9" fill="#262B33">每栏描述...</text>
+      <text x="260" y="145" font-size="9" fill="#262B33">（渲染器自动降档）</text>
+      <rect x="260" y="175" width="170" height="1" fill="#E2E0DA"/>
+      <text x="260" y="192" font-size="9" fill="#4A8260">▸ 特征要点</text>
+      <text x="260" y="208" font-size="9" fill="#4A8260">▸ 特征要点</text>
+      <rect x="260" y="240" width="170" height="20" rx="3" fill="#E1F5EE"/>
+      <text x="270" y="254" font-size="9" fill="#4A8260">💡 生活化比喻</text>
+      <!-- col 3 -->
+      <rect x="450" y="58" width="195" height="260" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="450" y="58" width="195" height="6" fill="#B07B35" rx="0"/>
+      <text x="465" y="80" font-size="9" fill="#59626D">方案 C</text>
+      <text x="465" y="100" font-size="12" font-weight="500" fill="#B07B35">核心机制短语</text>
+      <rect x="465" y="110" width="170" height="1" fill="#E2E0DA"/>
+      <text x="465" y="128" font-size="9" fill="#262B33">每栏描述...</text>
+      <rect x="465" y="175" width="170" height="1" fill="#E2E0DA"/>
+      <text x="465" y="192" font-size="9" fill="#4A8260">▸ 特征要点</text>
+      <rect x="465" y="240" width="170" height="20" rx="3" fill="#FAEEDA"/>
+      <text x="475" y="254" font-size="9" fill="#B07B35">💡 生活化比喻</text>
+      <!-- footer -->
+      <rect x="40" y="330" width="600" height="20" rx="3" fill="#F1EFE8"/>
+      <text x="50" y="344" font-size="9" fill="#59626D">footer_note（≤64 字，禁 callout：会砍每栏描述容量）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">columns 3-4</span>
+      <span class="field-tag">columns[].label ≤10</span>
+      <span class="field-tag">columns[].tag ≤14</span>
+      <span class="field-tag req">columns[].desc 20-220</span>
+      <span class="field-tag">columns[].points 0-4</span>
+      <span class="field-tag req">columns[].metaphor</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- numbered_cards -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">numbered_cards <span class="slide-badge">编号卡片</span></div>
+    <div class="slide-desc">4-8 张编号卡片，网格排列（2/3/4 列自适应）</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">六大功能模块</text>
+      <text x="40" y="55" font-size="9" fill="#59626D">每张卡编号 + 判断句标题 + 一段描述，每卡图标 + 块头色标</text>
+      <!-- card 1 -->
+      <rect x="40" y="68" width="195" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="40" y="68" width="4" height="130" fill="#2760A4"/>
+      <text x="58" y="90" font-size="14" font-weight="500" fill="#2760A4">01</text>
+      <text x="58" y="110" font-size="11" font-weight="500" fill="#262B33">统一评测基线</text>
+      <rect x="58" y="118" width="30" height="3" fill="#2760A4" rx="1"/>
+      <text x="58" y="135" font-size="9" fill="#59626D">任务集、指标、打分模型一处维护，</text>
+      <text x="58" y="150" font-size="9" fill="#59626D">每次改动都能量化回答</text>
+      <text x="58" y="170" font-size="9" fill="#59626D">4 卡（2列）每卡约 240 字</text>
+      <text x="58" y="185" font-size="9" fill="#59626D">8 卡（4列）每卡约 90 字</text>
+      <!-- card 2 -->
+      <rect x="245" y="68" width="195" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="245" y="68" width="4" height="130" fill="#4A8260"/>
+      <text x="263" y="90" font-size="14" font-weight="500" fill="#4A8260">02</text>
+      <text x="263" y="110" font-size="11" font-weight="500" fill="#262B33">自动化回归</text>
+      <rect x="263" y="118" width="30" height="3" fill="#4A8260" rx="1"/>
+      <text x="263" y="135" font-size="9" fill="#59626D">劣化即时告警 + 失败样本留档</text>
+      <text x="263" y="155" font-size="9" fill="#59626D">门禁：未达标不允许发布</text>
+      <!-- card 3 -->
+      <rect x="450" y="68" width="195" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="450" y="68" width="4" height="130" fill="#B07B35"/>
+      <text x="468" y="90" font-size="14" font-weight="500" fill="#B07B35">03</text>
+      <text x="468" y="110" font-size="11" font-weight="500" fill="#262B33">失败可归因</text>
+      <rect x="468" y="118" width="30" height="3" fill="#B07B35" rx="1"/>
+      <text x="468" y="135" font-size="9" fill="#59626D">按能力维度下钻到具体短板</text>
+      <!-- card 4 -->
+      <rect x="40" y="210" width="195" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="40" y="210" width="4" height="130" fill="#6B60A0"/>
+      <text x="58" y="232" font-size="14" font-weight="500" fill="#6B60A0">04</text>
+      <text x="58" y="252" font-size="11" font-weight="500" fill="#262B33">运营量化</text>
+      <rect x="58" y="260" width="30" height="3" fill="#6B60A0" rx="1"/>
+      <text x="58" y="277" font-size="9" fill="#59626D">四项指标按月披露</text>
+      <text x="58" y="295" font-size="9" fill="#59626D">退出条件：达不到 = 劣化</text>
+      <!-- card 5 -->
+      <rect x="245" y="210" width="195" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="245" y="210" width="4" height="130" fill="#4389BE"/>
+      <text x="263" y="232" font-size="14" font-weight="500" fill="#4389BE">05</text>
+      <text x="263" y="252" font-size="11" font-weight="500" fill="#262B33">协同机制</text>
+      <rect x="263" y="260" width="30" height="3" fill="#4389BE" rx="1"/>
+      <text x="263" y="277" font-size="9" fill="#59626D">每周刷新基线，每月复盘</text>
+      <!-- card 6 -->
+      <rect x="450" y="210" width="195" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="450" y="210" width="4" height="130" fill="#AD6483"/>
+      <text x="468" y="232" font-size="14" font-weight="500" fill="#AD6483">06</text>
+      <text x="468" y="252" font-size="11" font-weight="500" fill="#262B33">退出机制</text>
+      <rect x="468" y="260" width="30" height="3" fill="#AD6483" rx="1"/>
+      <text x="468" y="277" font-size="9" fill="#59626D">前三短板转成下轮专项</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">cards 4-8</span>
+      <span class="field-tag">cards[].no ≤2</span>
+      <span class="field-tag req">cards[].name 2-20</span>
+      <span class="field-tag">cards[].sub ≤32</span>
+      <span class="field-tag req">cards[].desc 20-240</span>
+      <span class="field-tag">callout 0-4</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- layered_stack -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">layered_stack <span class="slide-badge">层级堆栈</span></div>
+    <div class="slide-desc">3-12 层堆叠条形图，层数自适应</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">系统分层架构（5 层示例）</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- layer 5 (top) -->
+      <rect x="120" y="60" width="500" height="40" rx="4" fill="#EEF4FB" stroke="#B5D4F4"/>
+      <text x="140" y="82" font-size="11" font-weight="500" fill="#2760A4">接入层</text>
+      <text x="140" y="95" font-size="9" fill="#59626D">网关 / 路由 / 鉴权 / 限流</text>
+      <rect x="560" y="68" width="50" height="24" rx="12" fill="#B5D4F4"/>
+      <text x="572" y="84" font-size="9" fill="#2760A4">标签</text>
+      <!-- layer 4 -->
+      <rect x="120" y="108" width="500" height="40" rx="4" fill="#E1F5EE" stroke="#9FE1CB"/>
+      <text x="140" y="130" font-size="11" font-weight="500" fill="#4A8260">业务逻辑层</text>
+      <text x="140" y="143" font-size="9" fill="#59626D">编排 / 决策 / 状态机 / 规则引擎</text>
+      <!-- layer 3 -->
+      <rect x="120" y="156" width="500" height="40" rx="4" fill="#FAECE7" stroke="#F5C4B3"/>
+      <text x="140" y="178" font-size="11" font-weight="500" fill="#B07B35">领域服务层</text>
+      <text x="140" y="191" font-size="9" fill="#59626D">用户 / 订单 / 商品 / 库存</text>
+      <!-- layer 2 -->
+      <rect x="120" y="204" width="500" height="40" rx="4" fill="#EEEDFE" stroke="#CECBF6"/>
+      <text x="140" y="226" font-size="11" font-weight="500" fill="#6B60A0">数据访问层</text>
+      <text x="140" y="239" font-size="9" fill="#59626D">ORM / 缓存 / 搜索 / 消息队列</text>
+      <!-- layer 1 (bottom) -->
+      <rect x="120" y="252" width="500" height="40" rx="4" fill="#FAEEDA" stroke="#FAC775"/>
+      <text x="140" y="274" font-size="11" font-weight="500" fill="#B07B35">基础设施层</text>
+      <text x="140" y="287" font-size="9" fill="#59626D">容器 / 网络 / 存储 / 监控 / 日志</text>
+      <!-- right side aux area -->
+      <rect x="40" y="60" width="70" height="232" rx="4" fill="#F1EFE8"/>
+      <text x="50" y="80" font-size="9" fill="#59626D">右栏辅区</text>
+      <text x="50" y="95" font-size="9" fill="#59626D">callout 放</text>
+      <text x="50" y="110" font-size="9" fill="#59626D">右边（横</text>
+      <text x="50" y="125" font-size="9" fill="#59626D">条宽度富</text>
+      <text x="50" y="140" font-size="9" fill="#59626D">余）</text>
+      <!-- callout bottom -->
+      <rect x="120" y="300" width="500" height="20" rx="3" fill="#F1EFE8"/>
+      <text x="130" y="314" font-size="9" fill="#59626D">callout / footer_note（二选一，辅区放右栏优先）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">layers 3-12</span>
+      <span class="field-tag req">layers[].label 2-14</span>
+      <span class="field-tag req">layers[].desc 15-180</span>
+      <span class="field-tag">layers[].tags 0-3</span>
+      <span class="field-tag">callout 0-4</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- flow -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">flow <span class="slide-badge">流程图</span></div>
+    <div class="slide-desc">3-12 步流程，>6 步自动折返，支持环形/线性</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">构建流程（6 步示例）</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- steps -->
+      <rect x="40" y="60" width="90" height="80" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="55" y="85" font-size="12" font-weight="500" fill="#2760A4">读取配置</text>
+      <text x="55" y="105" font-size="9" fill="#59626D">解析文件，校验</text>
+      <text x="55" y="120" font-size="9" fill="#59626D">schema</text>
+      <rect x="145" y="60" width="90" height="80" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="160" y="85" font-size="12" font-weight="500" fill="#4A8260">初始化</text>
+      <text x="160" y="105" font-size="9" fill="#59626D">建立连接池</text>
+      <rect x="250" y="60" width="90" height="80" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="265" y="85" font-size="12" font-weight="500" fill="#B07B35">预处理</text>
+      <text x="265" y="105" font-size="9" fill="#59626D">数据清洗转换</text>
+      <rect x="355" y="60" width="90" height="80" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="370" y="85" font-size="12" font-weight="500" fill="#6B60A0">执行逻辑</text>
+      <text x="370" y="105" font-size="9" fill="#59626D">核心计算步骤</text>
+      <rect x="460" y="60" width="90" height="80" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="475" y="85" font-size="12" font-weight="500" fill="#4389BE">结果校验</text>
+      <text x="475" y="105" font-size="9" fill="#59626D">验证输出正确</text>
+      <rect x="565" y="60" width="80" height="80" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="580" y="85" font-size="12" font-weight="500" fill="#AD6483">输出</text>
+      <text x="580" y="105" font-size="9" fill="#59626D">写入存储</text>
+      <!-- arrows -->
+      <line x1="130" y1="100" x2="145" y2="100" stroke="#59626D" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <line x1="235" y1="100" x2="250" y2="100" stroke="#59626D" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <line x1="340" y1="100" x2="355" y2="100" stroke="#59626D" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <line x1="445" y1="100" x2="460" y2="100" stroke="#59626D" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <line x1="550" y1="100" x2="565" y2="100" stroke="#59626D" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <!-- loop note -->
+      <rect x="160" y="170" width="380" height="24" rx="12" fill="#E1F5EE"/>
+      <text x="180" y="186" font-size="9" fill="#4A8260">🔄 循环/回退说明（loop_note，≤60 字，仅 ≤6 步环形时画）</text>
+      <!-- 2-row example -->
+      <text x="40" y="225" font-size="12" font-weight="500" fill="#262B33">8 步折返示例</text>
+      <rect x="40" y="240" width="75" height="55" rx="4" fill="#EEF4FB"/>
+      <text x="50" y="262" font-size="9" fill="#2760A4">Step 1</text>
+      <rect x="125" y="240" width="75" height="55" rx="4" fill="#E1F5EE"/>
+      <text x="135" y="262" font-size="9" fill="#4A8260">Step 2</text>
+      <rect x="210" y="240" width="75" height="55" rx="4" fill="#FAECE7"/>
+      <text x="220" y="262" font-size="9" fill="#B07B35">Step 3</text>
+      <rect x="295" y="240" width="75" height="55" rx="4" fill="#EEEDFE"/>
+      <text x="305" y="262" font-size="9" fill="#6B60A0">Step 4</text>
+      <!-- return arrow -->
+      <path d="M 390 267 Q 410 310 430 267" stroke="#59626D" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/>
+      <rect x="430" y="240" width="75" height="55" rx="4" fill="#FAEEDA"/>
+      <text x="440" y="262" font-size="9" fill="#B07B35">Step 5</text>
+      <rect x="515" y="240" width="75" height="55" rx="4" fill="#EEF4FB"/>
+      <text x="525" y="262" font-size="9" fill="#2760A4">Step 6</text>
+      <rect x="515" y="305" width="75" height="55" rx="4" fill="#E1F5EE"/>
+      <text x="525" y="327" font-size="9" fill="#4A8260">Step 7</text>
+      <rect x="515" y="340" width="75" height="55" rx="4" fill="#FAECE7"/>
+      <text x="525" y="352" font-size="9" fill="#B07B35">Step 8</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">steps 3-12</span>
+      <span class="field-tag req">steps[].label 2-10</span>
+      <span class="field-tag req">steps[].desc 10-80</span>
+      <span class="field-tag">callout 0-4</span>
+      <span class="field-tag">loop_note ≤60</span>
+    </div>
+  </div>
+</div>
+
+<!-- hierarchy -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">hierarchy <span class="slide-badge">层级图</span></div>
+    <div class="slide-desc">根节点 + 2-8 子模块，包含树形 / 递进阶梯</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">系统架构（根 + 4 子模块）</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- root -->
+      <rect x="250" y="58" width="180" height="45" rx="6" fill="#EEF4FB" stroke="#B5D4F4"/>
+      <text x="290" y="83" font-size="13" font-weight="500" fill="#2760A4">根节点（整体）</text>
+      <!-- connectors -->
+      <line x1="340" y1="103" x2="140" y2="150" stroke="#B5D4F4" stroke-width="1.5"/>
+      <line x1="340" y1="103" x2="273" y2="150" stroke="#B5D4F4" stroke-width="1.5"/>
+      <line x1="340" y1="103" x2="407" y2="150" stroke="#B5D4F4" stroke-width="1.5"/>
+      <line x1="340" y1="103" x2="540" y2="150" stroke="#B5D4F4" stroke-width="1.5"/>
+      <!-- nodes -->
+      <rect x="80" y="150" width="120" height="70" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="95" y="175" font-size="11" font-weight="500" fill="#2760A4">子模块 A</text>
+      <text x="95" y="195" font-size="9" fill="#59626D">描述 ~85 字</text>
+      <text x="95" y="210" font-size="9" fill="#59626D">卡片随个数变窄</text>
+      <rect x="213" y="150" width="120" height="70" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="228" y="175" font-size="11" font-weight="500" fill="#4A8260">子模块 B</text>
+      <text x="228" y="195" font-size="9" fill="#59626D">描述</text>
+      <rect x="346" y="150" width="120" height="70" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="361" y="175" font-size="11" font-weight="500" fill="#B07B35">子模块 C</text>
+      <text x="361" y="195" font-size="9" fill="#59626D">描述</text>
+      <rect x="480" y="150" width="120" height="70" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="495" y="175" font-size="11" font-weight="500" fill="#6B60A0">子模块 D</text>
+      <text x="495" y="195" font-size="9" fill="#59626D">描述</text>
+      <!-- mode -->
+      <rect x="40" y="240" width="120" height="30" rx="4" fill="#E1F5EE"/>
+      <text x="55" y="258" font-size="9" fill="#4A8260">mode=contain（树形包含）</text>
+      <rect x="180" y="240" width="140" height="30" rx="4" fill="#FAEEDA"/>
+      <text x="195" y="258" font-size="9" fill="#B07B35">mode=progressive（递进阶梯）</text>
+      <!-- callout -->
+      <rect x="40" y="285" width="600" height="25" rx="4" fill="#F1EFE8"/>
+      <text x="50" y="302" font-size="9" fill="#59626D">callout 辅区（2-8 个子模块，卡片随个数变窄）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">root 2-20</span>
+      <span class="field-tag req">nodes 2-8</span>
+      <span class="field-tag req">nodes[].label 2-12</span>
+      <span class="field-tag req">nodes[].desc 6-100</span>
+      <span class="field-tag">mode</span>
+      <span class="field-tag">callout 0-4</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- table -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">table <span class="slide-badge">表格页</span></div>
+    <div class="slide-desc">2-6 列表头 + 1-12 行 + 可选右侧辅区</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">性能对比表</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- table -->
+      <rect x="40" y="58" width="460" height="240" rx="4" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <!-- header -->
+      <rect x="40" y="58" width="460" height="28" fill="#EEF4FB"/>
+      <line x1="40" y1="86" x2="500" y2="86" stroke="#E2E0DA"/>
+      <text x="55" y="77" font-size="10" font-weight="500" fill="#2760A4">指标</text>
+      <text x="155" y="77" font-size="10" font-weight="500" fill="#2760A4">方案 A</text>
+      <text x="255" y="77" font-size="10" font-weight="500" fill="#2760A4">方案 B</text>
+      <text x="355" y="77" font-size="10" font-weight="500" fill="#2760A4">方案 C</text>
+      <text x="445" y="77" font-size="10" font-weight="500" fill="#2760A4">备注</text>
+      <!-- rows -->
+      <line x1="40" y1="110" x2="500" y2="110" stroke="#E2E0DA"/>
+      <text x="55" y="102" font-size="9" fill="#262B33">QPS</text>
+      <text x="155" y="102" font-size="9" fill="#4A8260">5000</text>
+      <text x="255" y="102" font-size="9" fill="#B07B35">3200</text>
+      <text x="355" y="102" font-size="9" fill="#6B60A0">4800</text>
+      <text x="445" y="102" font-size="9" fill="#59626D">越高越好</text>
+      <line x1="40" y1="130" x2="500" y2="130" stroke="#E2E0DA"/>
+      <text x="55" y="122" font-size="9" fill="#262B33">P99 延迟</text>
+      <text x="155" y="122" font-size="9" fill="#4A8260">50ms</text>
+      <text x="255" y="122" font-size="9" fill="#B07B35">80ms</text>
+      <text x="355" y="122" font-size="9" fill="#6B60A0">55ms</text>
+      <text x="445" y="122" font-size="9" fill="#59626D">越低越好</text>
+      <line x1="40" y1="150" x2="500" y2="150" stroke="#E2E0DA"/>
+      <text x="55" y="142" font-size="9" fill="#262B33">可用性</text>
+      <text x="155" y="142" font-size="9" fill="#4A8260">99.9%</text>
+      <text x="255" y="142" font-size="9" fill="#B07B35">99.5%</text>
+      <text x="355" y="142" font-size="9" fill="#6B60A0">99.95%</text>
+      <text x="445" y="142" font-size="9" fill="#59626D">年度目标</text>
+      <line x1="40" y1="170" x2="500" y2="170" stroke="#E2E0DA"/>
+      <text x="55" y="162" font-size="9" fill="#262B33">成本</text>
+      <text x="155" y="162" font-size="9" fill="#4A8260">中</text>
+      <text x="255" y="162" font-size="9" fill="#B07B35">低</text>
+      <text x="355" y="162" font-size="9" fill="#6B60A0">高</text>
+      <text x="445" y="162" font-size="9" fill="#59626D">万元/月</text>
+      <!-- right side aux -->
+      <rect x="515" y="58" width="145" height="240" rx="4" fill="#F1EFE8"/>
+      <text x="525" y="80" font-size="10" font-weight="500" fill="#262B33">关键洞察</text>
+      <text x="525" y="100" font-size="9" fill="#59626D">side 辅区</text>
+      <text x="525" y="115" font-size="9" fill="#59626D">0-4 条：关键</text>
+      <text x="525" y="130" font-size="9" fill="#59626D">数字/边界/待</text>
+      <text x="525" y="145" font-size="9" fill="#59626D">确认点</text>
+      <rect x="525" y="160" width="125" height="35" rx="3" fill="#EEF4FB"/>
+      <text x="535" y="175" font-size="9" fill="#2760A4">最优：方案 A</text>
+      <text x="535" y="190" font-size="9" fill="#2760A4">QPS 最高</text>
+      <rect x="525" y="200" width="125" height="35" rx="3" fill="#FAEEDA"/>
+      <text x="535" y="215" font-size="9" fill="#B07B35">成本：方案 C</text>
+      <text x="535" y="230" font-size="9" fill="#B07B35">需评估 ROI</text>
+      <!-- note -->
+      <rect x="40" y="308" width="600" height="20" rx="3" fill="#F1EFE8"/>
+      <text x="50" y="322" font-size="9" fill="#59626D">底部 note（≤120 字）：表格脚注、口径说明、数据来源等</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 4-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">headers 2-6</span>
+      <span class="field-tag req">rows 1-12</span>
+      <span class="field-tag">side 0-4</span>
+      <span class="field-tag">note ≤120</span>
+    </div>
+  </div>
+</div>
+
+<!-- chart -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">chart <span class="slide-badge">图表页</span></div>
+    <div class="slide-desc">左侧原生图表 + 右侧关键洞察 + 可选下方明细表</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">性能趋势图</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- chart area -->
+      <rect x="40" y="58" width="420" height="240" rx="4" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <text x="60" y="80" font-size="11" font-weight="500" fill="#262B33">折线图 / 柱状图 / 饼图 / 环形图 / 雷达图</text>
+      <text x="60" y="95" font-size="9" fill="#59626D">categories 2-10，series 1-3，自动配色</text>
+      <!-- chart placeholder -->
+      <path d="M 80 250 L 120 200 L 160 220 L 200 150 L 240 170 L 280 120 L 320 140 L 360 100 L 400 110" stroke="#2760A4" stroke-width="2" fill="none"/>
+      <path d="M 80 260 L 120 230 L 160 240 L 200 200 L 240 210 L 280 180 L 320 190 L 360 160 L 400 170" stroke="#4A8260" stroke-width="2" fill="none"/>
+      <circle cx="80" cy="250" r="4" fill="#2760A4"/>
+      <circle cx="120" cy="200" r="4" fill="#2760A4"/>
+      <circle cx="160" cy="220" r="4" fill="#2760A4"/>
+      <circle cx="200" cy="150" r="4" fill="#2760A4"/>
+      <circle cx="240" cy="170" r="4" fill="#2760A4"/>
+      <circle cx="280" cy="120" r="4" fill="#2760A4"/>
+      <circle cx="320" cy="140" r="4" fill="#2760A4"/>
+      <circle cx="360" cy="100" r="4" fill="#2760A4"/>
+      <circle cx="400" cy="110" r="4" fill="#2760A4"/>
+      <!-- insights (right) -->
+      <rect x="475" y="58" width="185" height="240" rx="4" fill="#F1EFE8"/>
+      <text x="490" y="80" font-size="11" font-weight="500" fill="#262B33">关键洞察（2-4 条）</text>
+      <rect x="490" y="95" width="155" height="45" rx="4" fill="#EEF4FB"/>
+      <text x="500" y="113" font-size="9" fill="#2760A4">📈 Q3 环比增长 25%</text>
+      <text x="500" y="130" font-size="9" fill="#59626D">超出预期 5 个百分点</text>
+      <rect x="490" y="148" width="155" height="45" rx="4" fill="#E1F5EE"/>
+      <text x="500" y="166" font-size="9" fill="#4A8260">📉 P99 延迟下降</text>
+      <text x="500" y="183" font-size="9" fill="#59626D">优化效果显著</text>
+      <rect x="490" y="201" width="155" height="45" rx="4" fill="#FAECE7"/>
+      <text x="500" y="219" font-size="9" fill="#B07B35">⚠️ 成本略有上升</text>
+      <text x="500" y="236" font-size="9" fill="#59626D">需关注 ROI</text>
+      <!-- detail table -->
+      <rect x="40" y="308" width="600" height="45" rx="3" fill="#F1EFE8"/>
+      <text x="50" y="325" font-size="9" fill="#59626D">detail_headers + detail_rows（可选明细表，数据点 ≤5 时建议补充）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag req">summary 15-240</span>
+      <span class="field-tag req">chart.type</span>
+      <span class="field-tag req">chart.categories 2-10</span>
+      <span class="field-tag req">chart.series 1-3</span>
+      <span class="field-tag req">insights 2-4</span>
+      <span class="field-tag">detail_headers 2-4</span>
+      <span class="field-tag">detail_rows 0-10</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- panel_2col -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">panel_2col <span class="slide-badge">双模块并排</span></div>
+    <div class="slide-desc">两个独立模块左右并排，各带背景框和总结</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">方案对比（双模块并排）</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- left panel -->
+      <rect x="40" y="58" width="305" height="260" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="40" y="58" width="305" height="6" fill="#2760A4"/>
+      <text x="55" y="80" font-size="11" font-weight="500" fill="#2760A4">方案 A：自研</text>
+      <rect x="55" y="90" width="275" height="35" rx="4" fill="#EEF4FB"/>
+      <text x="65" y="110" font-size="9" fill="#2760A4">总结陈述段（16-110 字）</text>
+      <text x="65" y="122" font-size="9" fill="#59626D">开口即结论，带数字/口径</text>
+      <!-- points -->
+      <rect x="55" y="135" width="275" height="18" rx="3" fill="#F1EFE8"/>
+      <text x="65" y="148" font-size="9" fill="#262B33">▸ 要点 1（≤44 字）</text>
+      <rect x="55" y="158" width="275" height="18" rx="3" fill="#F1EFE8"/>
+      <text x="65" y="171" font-size="9" fill="#262B33">▸ 要点 2</text>
+      <rect x="55" y="181" width="275" height="18" rx="3" fill="#F1EFE8"/>
+      <text x="65" y="194" font-size="9" fill="#262B33">▸ 要点 3</text>
+      <!-- mini table -->
+      <rect x="55" y="210" width="275" height="80" rx="3" fill="#F8F8F8"/>
+      <text x="65" y="225" font-size="9" fill="#59626D">迷你明细表（可选）</text>
+      <line x1="55" y1="232" x2="330" y2="232" stroke="#E2E0DA"/>
+      <text x="65" y="248" font-size="9" fill="#262B33">指标  |  数值  |  说明</text>
+      <text x="65" y="262" font-size="9" fill="#262B33">QPS   |  5000 |  实测</text>
+      <!-- right panel -->
+      <rect x="355" y="58" width="305" height="260" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="355" y="58" width="305" height="6" fill="#4A8260"/>
+      <text x="370" y="80" font-size="11" font-weight="500" fill="#4A8260">方案 B：开源</text>
+      <rect x="370" y="90" width="275" height="35" rx="4" fill="#E1F5EE"/>
+      <text x="380" y="110" font-size="9" fill="#4A8260">总结陈述段</text>
+      <rect x="370" y="135" width="275" height="18" rx="3" fill="#F1EFE8"/>
+      <text x="380" y="148" font-size="9" fill="#262B33">▸ 要点 1</text>
+      <rect x="370" y="158" width="275" height="18" rx="3" fill="#F1EFE8"/>
+      <text x="380" y="171" font-size="9" fill="#262B33">▸ 要点 2</text>
+      <!-- footer -->
+      <rect x="40" y="330" width="600" height="20" rx="3" fill="#F1EFE8"/>
+      <text x="50" y="344" font-size="9" fill="#59626D">callout / footer_note（底部横条，或右侧纵栏 — 自动选择最优落位）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">panels = 2</span>
+      <span class="field-tag req">panels[].label 2-14</span>
+      <span class="field-tag req">panels[].summary 16-110</span>
+      <span class="field-tag">panels[].points 0-6</span>
+      <span class="field-tag">panels[].headers 0-4</span>
+      <span class="field-tag">panels[].rows 0-6</span>
+      <span class="field-tag">callout 0-4</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- figure -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">figure <span class="slide-badge">图示页</span></div>
+    <div class="slide-desc">原图嵌入 + 图注 + 右侧要点</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">系统架构图</text>
+      <line x1="40" y1="48" x2="640" y2="48" stroke="#E2E0DA"/>
+      <!-- image area -->
+      <rect x="40" y="58" width="460" height="240" rx="4" fill="#EEF4FB" stroke="#B5D4F4" stroke-dasharray="4,2"/>
+      <text x="200" y="160" font-size="14" fill="#2760A4">图片 / EMF / WMF</text>
+      <text x="200" y="185" font-size="10" fill="#59626D">image 路径，逐字节原样嵌入</text>
+      <!-- caption -->
+      <rect x="40" y="308" width="460" height="24" rx="3" fill="#F1EFE8"/>
+      <text x="50" y="324" font-size="9" fill="#59626D">图注（caption，≤140 字）：一句话说清这张图在证明什么</text>
+      <!-- right points -->
+      <rect x="515" y="58" width="145" height="240" rx="4" fill="#F1EFE8"/>
+      <text x="525" y="80" font-size="10" font-weight="500" fill="#262B33">图旁要点（0-3 条）</text>
+      <rect x="525" y="95" width="125" height="45" rx="3" fill="#FFFFFF"/>
+      <text x="535" y="113" font-size="9" fill="#2760A4">📌 要点 1（≤44 字）</text>
+      <text x="535" y="130" font-size="9" fill="#59626D">补充说明</text>
+      <rect x="525" y="150" width="125" height="45" rx="3" fill="#FFFFFF"/>
+      <text x="535" y="168" font-size="9" fill="#4A8260">📌 要点 2</text>
+      <text x="535" y="185" font-size="9" fill="#59626D">补充说明</text>
+      <rect x="525" y="205" width="125" height="45" rx="3" fill="#FFFFFF"/>
+      <text x="535" y="223" font-size="9" fill="#B07B35">📌 要点 3</text>
+      <text x="535" y="240" font-size="9" fill="#59626D">补充说明</text>
+      <text x="525" y="270" font-size="9" fill="#59626D">要点是图的补充</text>
+      <text x="525" y="285" font-size="9" fill="#59626D">别把图里的标签再抄</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">image 路径</span>
+      <span class="field-tag">caption ≤140</span>
+      <span class="field-tag">points 0-3</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- grid_2x2 -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">grid_2x2 <span class="slide-badge">2×2 网格</span></div>
+    <div class="slide-desc">四象限 / 矩阵，强制 2×2 排列 + 大字指标突出</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#FAFAFA"/>
+      <text x="40" y="38" font-size="16" font-weight="500" fill="#262B33">四象限分析矩阵</text>
+      <text x="40" y="55" font-size="9" fill="#59626D">格子标题 13pt → 核心指标 18pt（大字突出）→ 说明 11pt</text>
+      <!-- top left -->
+      <rect x="40" y="68" width="305" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="40" y="68" width="305" height="5" fill="#2760A4"/>
+      <text x="55" y="90" font-size="12" font-weight="500" fill="#2760A4">优势 Strengths</text>
+      <text x="55" y="125" font-size="20" font-weight="500" fill="#262B33">95%</text>
+      <text x="55" y="150" font-size="10" fill="#59626D">市场占有率高，用户满意度领先</text>
+      <text x="55" y="170" font-size="9" fill="#59626D">说明文字（≤60 字）</text>
+      <!-- top right -->
+      <rect x="355" y="68" width="305" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="355" y="68" width="305" height="5" fill="#4A8260"/>
+      <text x="370" y="90" font-size="12" font-weight="500" fill="#4A8260">劣势 Weaknesses</text>
+      <text x="370" y="125" font-size="20" font-weight="500" fill="#262B33">15%</text>
+      <text x="370" y="150" font-size="10" fill="#59626D">渗透率低，需要加大投入</text>
+      <!-- bottom left -->
+      <rect x="40" y="210" width="305" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="40" y="210" width="305" height="5" fill="#B07B35"/>
+      <text x="55" y="232" font-size="12" font-weight="500" fill="#B07B35">机会 Opportunities</text>
+      <text x="55" y="267" font-size="20" font-weight="500" fill="#262B33">3x</text>
+      <text x="55" y="292" font-size="10" fill="#59626D">行业增速快，市场空间大</text>
+      <!-- bottom right -->
+      <rect x="355" y="210" width="305" height="130" rx="6" fill="#FFFFFF" stroke="#E2E0DA"/>
+      <rect x="355" y="210" width="305" height="5" fill="#6B60A0"/>
+      <text x="370" y="232" font-size="12" font-weight="500" fill="#6B60A0">威胁 Threats</text>
+      <text x="370" y="267" font-size="20" font-weight="500" fill="#262B33">低</text>
+      <text x="370" y="292" font-size="10" fill="#59626D">竞争加剧，需持续创新</text>
+      <!-- footer -->
+      <rect x="40" y="348" width="600" height="12" rx="3" fill="#F1EFE8"/>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag req">title 6-32</span>
+      <span class="field-tag">summary ≤240</span>
+      <span class="field-tag req">q_top_left</span>
+      <span class="field-tag req">q_top_right</span>
+      <span class="field-tag req">q_bottom_left</span>
+      <span class="field-tag req">q_bottom_right</span>
+      <span class="field-tag req">q_*.title 2-12</span>
+      <span class="field-tag req">q_*.value 1-14</span>
+      <span class="field-tag">q_*.desc ≤60</span>
+      <span class="field-tag">footer_note ≤64</span>
+    </div>
+  </div>
+</div>
+
+<!-- end -->
+<div class="slide-card">
+  <div class="slide-header">
+    <div class="slide-name">end <span class="slide-badge">结尾页</span></div>
+    <div class="slide-desc">感谢语 + 联系信息</div>
+  </div>
+  <div class="slide-body">
+    <svg viewBox="0 0 680 360" xmlns="http://www.w3.org/2000/svg">
+      <rect width="680" height="360" fill="#1A4269"/>
+      <text x="340" y="140" text-anchor="middle" font-size="36" font-weight="500" fill="FFFFFF">谢谢观看</text>
+      <text x="340" y="190" text-anchor="middle" font-size="14" fill="#C5DCF0">Q &amp; A</text>
+      <text x="340" y="240" text-anchor="middle" font-size="13" fill="#CFDCE8">联系信息（可选，≤80 字）</text>
+    </svg>
+  </div>
+  <div class="fields">
+    <div class="fields-title">字段</div>
+    <div class="field-tags">
+      <span class="field-tag">title ≤20</span>
+      <span class="field-tag">sections 0-4</span>
+      <span class="field-tag">contact ≤80</span>
+    </div>
+  </div>
+</div>
+
+</div><!-- grid -->
+
+<h2 style="margin-top:40px;margin-bottom:16px;font-size:17px;">版式能力总览</h2>
+
+<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:40px;">
+  <thead>
+    <tr style="background:#F1EFE8;text-align:left;">
+      <th style="padding:10px 14px;border:1px solid #E2E0DA;">版式</th>
+      <th style="padding:10px 14px;border:1px solid #E2E0Da;">布局</th>
+      <th style="padding:10px 14px;border:1px solid #E2E0Da;">核心能力</th>
+      <th style="padding:10px 14px;border:1px solid #E2E0Da;">适用场景</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>cover</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">居中标题 + 副题</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">封面，40pt 大标题</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">开场</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>toc</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">3-6 卡片网格</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">目录导航</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">章节 >6 时必加</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>section</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">左侧大章节号</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">96pt 超大章节号</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">章节分隔</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>statement</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">正文 + 高亮卡 + 论据</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">150-700 字高密度，20pt 高亮值</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">核心结论页</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>compare_3col</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">3-4 栏并排</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">生活化比喻，禁 callout</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">多方案对比</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>numbered_cards</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">4-8 卡，2-4 列</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">编号 + 色标 + 图标</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">功能/模块清单</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>layered_stack</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">横向条形堆叠</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">3-12 层，层数自适应</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">技术架构分层</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>flow</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">步骤 + 折返</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">3-12 步，环形/线性</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">操作流程、构建流程</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>hierarchy</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">根 + 子模块</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">包含 / 递进两模式</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">组织架构、模块关系</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>table</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">表格 + 右侧辅区</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">2-6 列 × 1-12 行</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">数据明细、参数对比</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>chart</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">左图 + 右洞察</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">6 种图型，可选明细表</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">数据趋势、占比</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>panel_2col</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">双模块并排</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">各带总结 + 要点/迷你表</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">并页（内容太少时）</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>figure</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">大图 + 右侧要点</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">EMF/WMF 矢量原样</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">手绘架构图/流程图</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>grid_2x2</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">2×2 格子 + 大字指标</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">18pt 核心指标突出</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">SWOT、四象限、矩阵</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;"><b>end</b></td><td style="padding:8px 14px;border:1px solid #E2E0Da;">居中感谢</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">结尾</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">收场</td></tr>
+  </tbody>
+</table>
+
+<h2 style="margin-bottom:16px;font-size:17px;">视觉层级约束（新增）</h2>
+<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:40px;">
+  <thead>
+    <tr style="background:#F1EFE8;text-align:left;">
+      <th style="padding:10px 14px;border:1px solid #E2E0Da;">层级</th>
+      <th style="padding:10px 14px;border:1px solid #E2E0Da;">字号</th>
+      <th style="padding:10px 14px;border:1px solid #E2E0Da;">用途</th>
+      <th style="padding:10px 14px;border:1px solid #E2E0Da;">比正文大</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;">Hero Value</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">20pt</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">statement.highlight.value</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">+8.5pt (vs 11.5pt)</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;">Quadrant Value</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">18pt</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">grid_2x2 格子核心指标</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">+6.5pt</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;">Page Title</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">23pt</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">内容页标题（判断句）</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">+10.5pt</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;">Card Title</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">15pt</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">卡片标题</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">+3.5pt</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;">Body</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">12.5pt</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">正文、summary</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">基准</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;">Card Body</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">11.5pt</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">卡片正文（最低 10pt）</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">-1pt</td></tr>
+    <tr><td style="padding:8px 14px;border:1px solid #E2E0Da;">Caption</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">11pt</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">grid_2x2 格子说明、footer</td><td style="padding:8px 14px;border:1px solid #E2E0Da;">-1.5pt</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

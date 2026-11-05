@@ -1,0 +1,68 @@
+# ============================================================================
+# 工作流声明清单（由平台引擎解析消费）
+#
+# 这个工作流**不跑 exe、不产出文件**：一次表单 → 一条 UserPrompt。
+# 弹窗里填四个字段（PPT 类型 / PPT 风格 / PPT 速度 / 源文件），引擎按
+# [entry].prompt 的模板替换 {name} 占位符，把整串交给 PPT Agent 作为首条输入：
+#
+#   请生成一个PPT，其中PPT类型是研讨型 · 全量详实，风格是经典藏青，生成速度慢，
+#   输入的源文档路径是 C:\项目\材料.docx
+#
+# 与样例的差别只有一处：[entry] 里没有 program/args（没有 exe 可跑），
+# 用 prompt 承载模板。若引擎的键名不是 prompt（instruction / template 之类），
+# 只改这一行即可，[[inputs]] 与占位符都是标准字段。
+#
+# 四个字段的取值与 PPT Agent 的 --brief / --style / --speed 同源：
+#   brief  seminar 研讨型 · 全量详实 / briefing 汇报型 · 结论先行
+#   style  style-harness 经典藏青 / blue-business 深蓝商务 / bright 明亮宣讲 /
+#          forest 墨绿战略 / violet-tech 紫灰科技
+#   speed  slow 慢（默认：评审大纲、warning 归零）/ fast 快（直接出成品）
+# ============================================================================
+id = "ppt-generate"
+name = "PPT 生成"
+code = "1"
+kind = "skill"
+description = "选择 PPT 类型、风格、速度并指定源文档（.docx / .doc / .md），把四项拼成一条 UserPrompt 交给 PPT Agent，由它读入文档并出图。"
+usage_examples = [
+  '/run ppt-generate --brief "研讨型 · 全量详实" --style "经典藏青" --speed "慢" --source "C:\\项目\\材料.docx"'
+]
+
+[entry]
+# 不调用外部程序：prompt 就是本工作流的入口，由引擎用表单值替换占位符后发送。
+# 占位符只认下面四个 [[inputs]].name，多写一个会替换失败（宁可报错，不要缺字）。
+prompt = "请生成一个PPT，其中PPT类型是{brief}，风格是{style}，生成速度{speed}，输入的源文档路径是{source}"
+working_dir = "{workspace_dir}"
+
+[[inputs]]
+name = "brief"
+label = "PPT 类型"
+type = "select"
+required = true
+# select_placeholder 即默认选中项（打开就是它，用户不改也成立）
+select_placeholder = "研讨型 · 全量详实"
+options = ["研讨型 · 全量详实", "汇报型 · 结论先行"]
+
+[[inputs]]
+name = "style"
+label = "PPT 风格"
+type = "select"
+required = true
+select_placeholder = "经典藏青"
+options = ["经典藏青", "深蓝商务", "明亮宣讲", "墨绿战略", "紫灰科技"]
+
+[[inputs]]
+name = "speed"
+label = "PPT 速度"
+type = "select"
+required = true
+select_placeholder = "慢"
+options = ["慢", "快"]
+
+[[inputs]]
+name = "source"
+label = "源文件"
+type = "path"
+required = true
+pick = "file"
+file_extensions = [".docx", ".doc", ".md"]
+default_dir = "{workspace_dir}"

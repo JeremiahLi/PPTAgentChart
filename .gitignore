@@ -1,0 +1,15 @@
+# 构建产物与中间产物
+.pi/out/
+.pi/work/
+work/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# 离线依赖包（86MB，可由 requirements*.txt 重新下载，不入库）
+.pi/wheels/
+
+# 本地会话与编辑器数据
+.workbuddy/
+.codebuddy/
+.vscode/
