@@ -13,6 +13,10 @@
 > 代码侧零改动即可工作：`renderer/` 与 `tests/` 全部用 `__file__` 推父目录（`_BASE`/`REPO`），
 > `layouts.resolve_image_path` 先试 `_BASE` 再试 cwd，整体平移一层后相对关系不变。
 
+> **自动提交约定（2026-11-05 起，强制执行）**：每次对代码/文档/规范做了一轮优化调整，
+> 任务收尾时必须当场 `git add` + `git commit`（commit 信息一律**简体中文**、概括本次改动）+
+> `git push origin main`，不要等用户提醒。禁止 `--force`；`.gitignore` 已排除的产物不入库。
+
 ## 谁负责什么
 
 - **三个用户维度 + 默认值**（`build.py --brief / --style / --speed`）：
