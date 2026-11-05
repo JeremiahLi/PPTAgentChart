@@ -1,6 +1,6 @@
 // @ts-nocheck
-// PPTAgent 欢迎面板：pi 打开本项目时，在初始界面最下方展示项目简介与可用选项。
-// 机制：session_start 事件 + ctx.ui.setWidget({ placement: "belowEditor" })。
+// PPTAgent 欢迎面板：pi 打开本项目时，在输入框上方展示项目简介与全部选项。
+// 机制：session_start 事件 + ctx.ui.setWidget({ placement: "aboveEditor" })。
 // 对齐：内容行按「显示宽度」（CJK 记 2 列、其余记 1 列）在运行时补齐，边框不会错位。
 
 var W = 74 // 内容区显示宽度（不含左右边框各 1 列）
@@ -48,34 +48,26 @@ function renderBox(lines) {
   return out
 }
 
+// 注意：pi 1.4.0 对字符串数组 widget 硬截断在 MAX_WIDGET_LINES = 10 行
+// （dist/modes/interactive/interactive-mode.js）。本面板恰好 10 行，
+// 再加行会被切掉并显示 "... (widget truncated)"；要放更多内容得换组件工厂形式。
 var PANEL_LINES = [
-  '',
-  '  PPTAgent：把文档、思路做成高信息密度、图表丰富的 .pptx',
-  '  内网私有模型驱动，全程中文；出图唯一通道 .pi/renderer/，规范见 AGENTS.md',
-  '',
-  '  【快速上手】',
-  '  /ppt <文档路径>              一条命令启动完整出稿流程',
-  '  直接说需求也可以             例如：把 work/input.md 做成汇报',
-  '',
-  '  【全部选项】说出编号即可切换；不指定则按默认值走',
-  '  类型',
-  '    1 研讨型（默认，全量详实）      2 汇报型（结论先行）',
-  '  风格',
-  '    3 经典藏青（默认）    4 深蓝商务    5 明亮宣讲',
-  '    6 墨绿战略            7 紫灰科技',
-  '  速度',
-  '    8 慢（默认，大纲过目 + warning 归零）    9 快（少停顿直接出图）',
-  '',
-  '  【流程】需求澄清 -> 输入分析 -> 大纲 -> 成批生成 -> build 一条命令出图',
-  '  【交付】.pi/out/ 主题.pptx，自动通过质检与字体自检',
-  '',
+  '  PPTAgent：文档 / 思路 -> 高信息密度、图表丰富的 .pptx（内网私有模型）',
+  '  入口：/ppt <文档路径>，或直接说需求（例：把 input.md 做成汇报）',
+  '  选项（报编号即可切换；不指定则按默认值走）',
+  '  类型  1 研讨型（默认）   2 汇报型（结论先行）',
+  '  风格  3 经典藏青（默认） 4 深蓝商务 5 明亮宣讲 6 墨绿战略 7 紫灰科技',
+  '  速度  8 慢（默认，大纲过目+warning归零）  9 快（少停顿直接出图）',
+  '  流程：需求澄清 -> 输入分析 -> 大纲 -> 成批生成 -> build 一条命令出图',
+  '  交付：.pi/out/ 主题.pptx（自动通过质检与字体自检）',
 ]
 
 export default function (pi) {
   pi.on('session_start', async function (_event, ctx) {
     if (!ctx || !ctx.hasUI) return
+// 挂在编辑器（输入框）上方：下方空间小会截断长面板，上方空间大且随会话内容滚动。
     ctx.ui.setWidget('pptagent-welcome', renderBox(PANEL_LINES), {
-      placement: 'belowEditor',
+      placement: 'aboveEditor',
     })
   })
 }
