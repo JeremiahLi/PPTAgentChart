@@ -55,17 +55,33 @@
 
 | 时机 | 入口 | 行为 |
 |---|---|---|
-| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位 3.12 → 真跑 import 探针 → 缺则 `pip install` → 结果缓存 24h |
+| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定 → 缺则真装 → 结果缓存 24h |
 | 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走镜像 |
 | 换机 / 补包 | `.pi/wheels/README.md` | `pip download` 到对应版本子目录 |
 
-- 内网镜像：`http://172.30.39.34:8765/simple`（pip 标准索引路径，不是 `simples`）。
-  http 源必须带 `--trusted-host 172.30.39.34`，否则 pip 直接拒绝。
-- 扩展**强制 3.12**：找不到 3.12 就跳过，不会把包装进 3.13/3.14（本机启动不受打扰，
-  同一提示 24h 只说一次）。
+**判定方式**：不猜 import 名、不自己比版本——直接跑
+`pip install --dry-run --no-index -r requirements.txt`，退出码 0 = 全部满足（含版本约束）。
+`python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护，
+`numpy==2.4.6` 是否真装对也由 pip 权威实现负责。**这个脚本与具体项目无关**：
+任何有 `requirements.txt` 的 pi 项目丢进 `.pi/extensions/` 即可用（含 `~/.pi/agent/extensions/`
+全局生效），零配置默认走公网 PyPI。
+
+**本项目靠 `.pi/deps.json` 落地两个私有约束**：
+
+```json
+{ "python": "3.12", "indexUrl": "http://172.30.39.34:8765/simple" }
+```
+
+- `python: "3.12"` → 只认 3.12 解释器，找不到就跳过（本机 3.14 启动不受打扰，
+  同一提示 24h 只说一次）；不配则用 PATH 上的 python，不看版本。
+- `indexUrl` → 内网镜像，pip 标准索引路径 `/simple`（不是 `/simples`）。脚本会自动补
+  `--trusted-host`（http 源不带会被 pip 直接拒绝）；不配则走官方 PyPI。
 - 安装失败**不阻塞 pi 启动**，只打警告 + 给出手动修复命令——起不来的 pi 没法排查问题。
-- 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、`PI_PIP_INDEX_URL` 换源、
-  `PI_DEPS_PY_VERSION` 换目标版本。
+- 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、
+  `PI_PIP_INDEX_URL` / `PI_DEPS_PY_VERSION` / `PI_DEPS_TIMEOUT_MIN` 覆盖 deps.json。
+- 仓库根只向上找 3 层就停：再往上是父目录的别的项目，会把依赖装错地方。
+- 已知边界：`pip install` 装进目标解释器本身，**没有 venv 隔离**。多项目共用一个 Python
+  会互相顶版本，靠「一个项目一个 venv」的约定规避。
 - `requirements-full.txt` 已删除：里面的 pdf / plotly / markdown / svgwrite / requests 整条链
   当前代码一个都没 import——`docx_in.py` 读 Word 用的是 `zipfile` + `lxml` 直接解 OOXML，
   不需要 python-docx。要恢复某项能力，按 README 从镜像补回来，别再维护一个全量清单。

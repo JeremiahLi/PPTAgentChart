@@ -13,6 +13,9 @@ python -m pip install --no-index --find-links=.pi\wheels\py312 -r requirements.t
 或者直接跑仓库根的 `setup.bat`——它会先按当前解释器的 minor 版本找 `py312/` 这样的子目录；
 pip 的 `--find-links` 不递归，所以**必须指到子目录，不能只指 `.pi/wheels`**。
 
+pi 启动时会自动做同一件事（`.pi/extensions/deps-bootstrap.ts`），私有源和解释器版本
+配在 `.pi/deps.json`：`{"python": "3.12", "indexUrl": "http://172.30.39.34:8765/simple"}`。
+
 ## 目录里有什么（20 个）
 
 7 个直接依赖（`requirements.txt` 里显式写的）：
