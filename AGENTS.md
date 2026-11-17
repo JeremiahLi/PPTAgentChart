@@ -5,7 +5,7 @@
 出图唯一通道是 `.pi/renderer/`（PPT-DSL 结构化 JSON → pptx），**禁止手写 python-pptx / OOXML**。
 
 > **目录结构（2026-10 调整）**：工程主体 `renderer/`、`assets/`、`tests/`、`work/`、`out/`、
-> `docs/`、`wheels/` 全部位于 **`.pi/` 下**；仓库根只留 `AGENTS.md`、`requirements*.txt`、`setup.bat`。
+> `docs/`、`wheels/` 全部位于 **`.pi/` 下**；仓库根只留 `AGENTS.md`、`requirements.txt`、`setup.bat`。
 > **所有命令一律从仓库根执行，路径必须带 `.pi/` 前缀**：
 > `python .pi/renderer/build.py .pi/work/slides -o .pi/out/x.pptx --source .pi/work/analysis.md`
 > （一条命令 = 合并 + 质检 + 渲染 + 字体自检；拆开跑用 `merge.py` + `render.py --qc`）。
@@ -42,6 +42,33 @@
   与 `.pi/docs/pitfalls.md` 第 24 条。交付前跑 `python .pi/tests/font_audit.py .pi/out/xxx.pptx`
   自检（逐段核对 latin+ea 字体对 + 母版主题 + 编码）；要让**英文与数字也用雅黑**，
   渲染前设 `$env:PPT_FONT_LATIN="微软雅黑"` 即可，不用改代码。
+
+## 依赖与离线部署
+
+**目标解释器 = CPython 3.12 / win_amd64。** `.pi/wheels/py312/` 里的二进制全是 cp312，
+3.13 / 3.14 装不上也不该装（本机开发用的 3.14 与交付无关）。
+
+发布结构 = `requirements.txt` 的 **7 个直接依赖** + **13 个传递依赖** = 20 个 wheel / 38 MB。
+传递依赖不写进 requirements.txt，pip 顺着依赖树从同一目录自己取。
+
+三层保障，按触发顺序：
+
+| 时机 | 入口 | 行为 |
+|---|---|---|
+| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位 3.12 → 真跑 import 探针 → 缺则 `pip install` → 结果缓存 24h |
+| 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走镜像 |
+| 换机 / 补包 | `.pi/wheels/README.md` | `pip download` 到对应版本子目录 |
+
+- 内网镜像：`http://172.30.39.34:8765/simple`（pip 标准索引路径，不是 `simples`）。
+  http 源必须带 `--trusted-host 172.30.39.34`，否则 pip 直接拒绝。
+- 扩展**强制 3.12**：找不到 3.12 就跳过，不会把包装进 3.13/3.14（本机启动不受打扰，
+  同一提示 24h 只说一次）。
+- 安装失败**不阻塞 pi 启动**，只打警告 + 给出手动修复命令——起不来的 pi 没法排查问题。
+- 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、`PI_PIP_INDEX_URL` 换源、
+  `PI_DEPS_PY_VERSION` 换目标版本。
+- `requirements-full.txt` 已删除：里面的 pdf / plotly / markdown / svgwrite / requests 整条链
+  当前代码一个都没 import——`docx_in.py` 读 Word 用的是 `zipfile` + `lxml` 直接解 OOXML，
+  不需要 python-docx。要恢复某项能力，按 README 从镜像补回来，别再维护一个全量清单。
 
 ## 渲染器（.pi/renderer/）
 

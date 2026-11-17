@@ -6,8 +6,10 @@ work/
 __pycache__/
 *.pyc
 
-# 离线依赖包（86MB，可由 requirements*.txt 重新下载，不入库）
-.pi/wheels/
+# 离线依赖包（38MB，可由 requirements.txt 从内网镜像重新下载，不入库）
+# 例外：README.md 说明口径必须入库，requirements.txt 引用它
+.pi/wheels/*
+!.pi/wheels/README.md
 
 # 本地会话与编辑器数据
 .workbuddy/

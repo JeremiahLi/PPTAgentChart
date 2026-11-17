@@ -3,13 +3,16 @@
 # Chinese notes live in .pi/wheels/README.md instead.)
 #
 # Online : python -m pip install -r requirements.txt
-# Offline: python -m pip install --no-index --find-links=wheels -r requirements.txt
-#          (or just run setup.bat -- it switches to offline mode when wheels\ exists)
+# Offline: python -m pip install --no-index --find-links=.pi/wheels/py312 -r requirements.txt
+#          (or just run setup.bat -- it picks the folder matching your minor version)
 #
-# Versions are pinned to what .pi/wheels/ actually contains (cp311 + cp314, win_amd64).
-# The other bundled wheels (contourpy / cycler / fonttools / kiwisolver / pyparsing /
-# python-dateutil / six / typing_extensions / typing-inspection / annotated-types /
-# packaging / XlsxWriter / pydantic-core) are transitive deps, resolved automatically.
+# Target interpreter: CPython 3.12, win_amd64. The wheels under .pi/wheels/py312 are
+# cp312 binaries; a 3.13/3.14 interpreter cannot install them and needs its own set.
+#
+# The other 13 bundled wheels (contourpy / cycler / fonttools / kiwisolver / packaging /
+# pyparsing / python-dateutil / six / typing-extensions / typing-inspection /
+# annotated-types / pydantic-core / XlsxWriter) are transitive deps of the seven below,
+# resolved automatically from the same folder.
 
 python-pptx==1.0.2
 lxml==6.1.3
