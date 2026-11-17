@@ -49,17 +49,15 @@ function renderBox(lines) {
 }
 
 // 注意：pi 1.4.0 对字符串数组 widget 硬截断在 MAX_WIDGET_LINES = 10 行
-// （dist/modes/interactive/interactive-mode.js）。本面板恰好 10 行，
-// 再加行会被切掉并显示 "... (widget truncated)"；要放更多内容得换组件工厂形式。
+// （dist/modes/interactive/interactive-mode.js）。本面板 5 行内容 + 上下边框 = 7 行，
+// 再加行超过 10 行会被切掉并显示 "... (widget truncated)"；要放更多内容得换组件工厂形式。
+// 路径用双反斜杠转义：单引号串里 '\F' 会丢掉反斜杠，必须写 '\\' 才按字面渲染。
 var PANEL_LINES = [
-  '  PPTAgent：文档 / 思路 -> 高信息密度、图表丰富的 .pptx（内网私有模型）',
-  '  入口：/ppt <文档路径>，或直接说需求（例：把 input.md 做成汇报）',
-  '  选项（报编号即可切换；不指定则按默认值走）',
+  '  PPTAgent示例：按 1 5 9 生成一个PPT，输入是"D:\\Files\\示例.docx"',
   '  类型  1 研讨型（默认）   2 汇报型（结论先行）',
   '  风格  3 经典藏青（默认） 4 深蓝商务 5 明亮宣讲 6 墨绿战略 7 紫灰科技',
   '  速度  8 慢（默认，大纲过目+warning归零）  9 快（少停顿直接出图）',
-  '  流程：需求澄清 -> 输入分析 -> 大纲 -> 成批生成 -> build 一条命令出图',
-  '  交付：.pi/out/ 主题.pptx（自动通过质检与字体自检）',
+  '  流程：需求澄清 -> 输入分析 -> 大纲 -> 成批生页 <-> 自审 -> 交付',
 ]
 
 export default function (pi) {
