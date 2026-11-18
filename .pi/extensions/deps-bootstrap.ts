@@ -17,10 +17,16 @@
  *       退出码 0 = 全部满足（含版本约束）；非 0 = 缺包或版本不符。
  *       这样 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护。
  *
+ * 反馈口径：**报全部依赖（直接 + 传递）**，不是只报 requirements.txt 里那几行。
+ *   `requirements.txt` 只写 7 个直接依赖，实际要装 20 个（7 直接 + 13 传递）；
+ *   只显示 7 会让用户以为"就位"指的是 7 个，2026-11-18 用户明确提过这一点。
+ *   闭包由 `collectDepTree` 用 importlib.metadata 在本地递归算出（不联网、约 0.3 秒），
+ *   而"是否满足"仍由 pip 的 --dry-run 裁定——两者分工别搞混。
+ *
  * 终端反馈（每次启动都有，不让用户猜）：
  *   检查        `检查依赖是否就位（本地比对，不联网，约 10 秒）...`
- *   已就位      `✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10，无需下载）`
- *   缓存命中    `✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；本次跳过重复检查）`
+ *   已就位      `✓ 依赖已在位（20 个包：7 直接 + 13 传递 全部满足 · CPython 3.12.10，无需下载）`
+ *   缓存命中    `✓ 依赖已在位（20 个包：7 直接 + 13 传递，3.2 小时前已验证；本次跳过重复检查）`
  *   下载中      `依赖未就位（缺 3/7：...），开始从内网 server 下载：<url>` + pip 逐块实时输出
  *   完成        `✓ 依赖安装完成（耗时 42s，复检通过 · CPython 3.12.10）` + `本次装入：a-1.0 b-2.0 …`
  *   失败        `✗ 依赖安装失败：<人话原因>` + 手动重试命令
@@ -85,7 +91,11 @@ function warn(msg) {
 // ---------------------------------------------------------------------------
 const snapshot = {
   phase: "init", // init | checking | installing | ok | failed | no-python | no-pip | skipped
-  reqCount: 0,
+  reqCount: 0, // requirements.txt 里的直接依赖条数
+  directCount: 0, // 闭包里实际解析到的直接依赖个数
+  transitiveCount: 0, // 闭包里传递依赖个数
+  total: 0, // directCount + transitiveCount（用户要看的是这个）
+  pkgs: [], // 闭包里的包名-版本，用于展示
   missing: [],
   version: null,
   wantVersion: null,
@@ -134,25 +144,55 @@ function clip(text, width) {
   return out
 }
 
+/**
+ * "20 个包：7 直接 + 13 传递"——用户要的是这个数，不是 requirements.txt 的 7 行。
+ * 闭包没算出来（老 pip / 读取失败）时如实退回"只报了直接依赖"，不假装统计过。
+ */
+function counts() {
+  const s = snapshot
+  if (s.total) return `${s.total} 个包：${s.directCount} 直接 + ${s.transitiveCount} 传递`
+  // 闭包还没算出来（启动最初的零点几秒，或极端情况下读取失败）：只报直接依赖，
+  // 不编造传递依赖个数——这个分支只会短暂出现，稳态永远是上面那行。
+  if (s.reqCount) return `${s.reqCount} 个直接依赖`
+  return "依赖"
+}
+
+/** 包清单：一行放得下就全列，放不下就截断并标注还剩几个。 */
+function pkgLine() {
+  const s = snapshot
+  if (!s.pkgs.length) return ""
+  const shown = []
+  let width = 0
+  for (const p of s.pkgs) {
+    // 中文宽度按 2 算太苛，包名全是 ASCII，直接按字符数控制
+    if (width + p.length + 2 > 62) break
+    shown.push(p)
+    width += p.length + 2
+  }
+  const rest = s.pkgs.length - shown.length
+  return `已装 ${shown.join("  ")}${rest > 0 ? `  …另 ${rest} 个` : ""}`
+}
+
 /** 首页 widget 的内容：1-2 行，任何阶段都有一句能看懂的话。 */
 function renderStatus() {
   const s = snapshot
   switch (s.phase) {
     case "init":
     case "checking":
-      return [`⏳ 正在检索开源依赖（共 ${s.reqCount || "?"} 个直接依赖 + 传递依赖）...`]
+      return [`⏳ 正在检索开源依赖（${counts()}）...`]
     case "installing":
       return [
-        `⏳ 依赖未就位（缺 ${s.missing.length || "?"}/${s.reqCount || "?"}），正在从内网 server 下载安装...`,
+        `⏳ 依赖未就位（缺 ${s.missing.length || "?"} 个），正在从内网 server 下载安装...`,
         `   ${clip(s.progress || "等待 pip 输出首个包...", 60)}`,
       ]
     case "ok":
       return [
-        `✓ 依赖已就位（${s.reqCount}/${s.reqCount} 直接依赖 · CPython ${s.version || "?"}）${s.note || ""}`,
-      ]
+        `✓ 依赖已就位（${counts()} · CPython ${s.version || "?"}）${s.note || ""}`,
+        s.pkgs.length ? `   ${pkgLine()}` : "",
+      ].filter((line) => line.trim())
     case "failed":
       return [
-        `✗ 依赖未就位：${clip(s.detail, 56)}`,
+        `✗ 依赖未就位${s.missing.length ? `（缺 ${s.missing.length} 个）` : ""}：${clip(s.detail, 52)}`,
         `   ${clip(s.hint || "跑 PI_DEPS_CLI=1 看详细原因，或 PI_DEPS_VERBOSE=1 看判定过程", 60)}`,
       ]
     case "no-python":
@@ -226,14 +266,18 @@ function run(cmd, args, opts = {}) {
  * silent：只累积不转发（检查阶段用，pip 的 dry-run 日志对用户没价值）
  * onLine：每读到一段输出回调一次，供安装阶段把最新进度顶到 widget 上
  */
-function runStreaming(cmd, args, { cwd, timeoutMs = 120000, silent = false, onLine = null }) {
+function runStreaming(cmd, args, { cwd, timeoutMs = 120000, silent = false, onLine = null, env = null }) {
   // 兜底：timeoutMs 传错/漏传时 setTimeout(fn, undefined) 会当 0 处理，
   // 子进程刚起来就被杀掉、输出为空——2026-11-18 就是因此在检查阶段永远判失败。
   const limit = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 120000
   return new Promise((resolve) => {
     let child
     try {
-      child = spawn(cmd, args, { cwd, windowsHide: true })
+      child = spawn(cmd, args, {
+        cwd,
+        windowsHide: true,
+        env: env ? { ...process.env, ...env } : process.env,
+      })
     } catch (err) {
       resolve({ code: -1, output: "", error: err, timedOut: false })
       return
@@ -350,6 +394,132 @@ function countRequirements(repoRoot) {
       .filter((line) => line.trim() && !line.trim().startsWith("#")).length
   } catch {
     return 0
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 依赖闭包（含传递依赖）
+//
+// 为什么需要：requirements.txt 只有 7 行，但 pip 会顺着依赖树再装 13 个传递依赖，
+// 合计 20 个。只报"7 个直接依赖"会让人以为就位与否只看这 7 个。
+//
+// 为什么不用 pip 拿这个数：`pip install --dry-run` 的输出只有直接依赖
+// （"Requirement already satisfied: xxx"），拿不到闭包；`--report` 又不含已满足项，
+// 除非 `--ignore-installed`，而那个必须联网。
+// 所以本地读 importlib.metadata 的 Requires-Dist 递归——不联网、不装包、约 0.3 秒。
+// 注意分工：**闭包只用于显示；是否满足仍由 pip 的 --dry-run 裁定**（权威口径不变）。
+// ---------------------------------------------------------------------------
+const DEP_SCAN_SCRIPT = String.raw`
+import importlib, json, re, sys
+from importlib import metadata
+
+def norm(n):
+    return re.sub(r"[-_.]+", "-", (n or "")).lower().strip()
+
+def req_name(spec):
+    m = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", spec or "")
+    return norm(m.group(1)) if m else None
+
+def load_requirement():
+    for mod in ("packaging.requirements", "pip._vendor.packaging.requirements"):
+        try:
+            return importlib.import_module(mod).Requirement
+        except Exception:
+            continue
+    return None
+
+Requirement = load_requirement()
+
+def allowed(spec):
+    """环境 marker 不满足的依赖不算进来（extra 的依赖也一律不算）。"""
+    if ";" not in spec:
+        return True
+    if Requirement is None:
+        # 没有 packaging 时保守保留：多算一个名字（它多半没装，会被跳过）比漏算安全
+        return True
+    try:
+        r = Requirement(spec)
+        return r.marker is None or r.marker.evaluate({"extra": ""})
+    except Exception:
+        return True
+
+def dist_of(name):
+    try:
+        return metadata.distribution(name)
+    except Exception:
+        return None
+
+reqfile = sys.argv[1]
+roots = []
+for line in open(reqfile, encoding="utf-8", errors="replace"):
+    t = line.strip()
+    if not t or t.startswith("#") or t.startswith("-"):
+        continue
+    n = req_name(t)
+    if n:
+        roots.append(n)
+
+direct, transitive, missing = [], [], []
+seen = set()
+queue = [(n, 0) for n in roots]
+while queue:
+    name, depth = queue.pop(0)
+    if name in seen:
+        continue
+    seen.add(name)
+    dist = dist_of(name)
+    if dist is None:
+        # 直接依赖没装 = 真缺；传递依赖没装可能是 marker 不适用，不当成缺失
+        if depth == 0:
+            missing.append(name)
+        continue
+    label = "%s-%s" % (dist.metadata["Name"] or name, dist.version)
+    (direct if depth == 0 else transitive).append(label)
+    for spec in (dist.requires or []):
+        if not allowed(spec):
+            continue
+        dep = req_name(spec)
+        if dep and dep not in seen:
+            queue.append((dep, depth + 1))
+
+print(json.dumps({
+    "direct": direct,
+    "transitive": transitive,
+    "missing": missing,
+    "total": len(direct) + len(transitive),
+}))
+`
+
+/**
+ * 算出"直接 + 传递"的完整闭包。失败返回 null，调用方退回只报直接依赖条数。
+ * 用临时脚本而不是 `python -c`：多行脚本在 Windows 上过 cmd 的引号转义很容易翻车。
+ */
+async function collectDepTree(repoRoot, python) {
+  const scriptPath = path.join(repoRoot, ".pi", "work", ".depscan.py")
+  try {
+    fs.mkdirSync(path.dirname(scriptPath), { recursive: true })
+    fs.writeFileSync(scriptPath, DEP_SCAN_SCRIPT, "utf8")
+  } catch (err) {
+    verbose(`依赖闭包脚本写入失败（不影响检查）: ${err.message}`)
+    return null
+  }
+
+  const result = await runStreaming(
+    python.cmd,
+    [...python.args, scriptPath, path.join(repoRoot, "requirements.txt")],
+    { timeoutMs: 30000, cwd: repoRoot, silent: true, env: { PYTHONIOENCODING: "utf-8" } },
+  )
+  if (result.code !== 0) {
+    verbose(`依赖闭包计算失败（不影响检查）: ${String(result.output || "").slice(-200)}`)
+    return null
+  }
+  try {
+    const last = String(result.output || "").trim().split(/\r?\n/).pop()
+    const parsed = JSON.parse(last)
+    if (!parsed || !Array.isArray(parsed.direct)) return null
+    return parsed
+  } catch {
+    return null
   }
 }
 
@@ -499,11 +669,11 @@ function indexArgs(indexUrl) {
  * --prefer-binary：离线机通常没有编译链，优先拿 wheel，别现场编译 sdist。
  * --progress-bar on：输出不是 tty 时 pip 默认关进度条，强制打开才能看到刷新。
  */
-async function installDeps(repoRoot, python, config, missing, reqCount) {
+async function installDeps(repoRoot, python, config, missing) {
   const startedAt = Date.now()
   const elapsed = () => Math.round((Date.now() - startedAt) / 1000)
   const lacks = missing.length
-    ? `缺 ${missing.length}/${reqCount || "?"}：${missing.slice(0, 6).join(", ")}`
+    ? `${missing.length} 个未满足：${missing.slice(0, 6).join(", ")}${missing.length > 6 ? " …" : ""}`
     : "版本不满足"
 
   if (!config.indexUrl) {
@@ -702,6 +872,19 @@ async function ensureDeps(repoRoot) {
     return { status: "no-python", missing: [] }
   }
 
+  // 先算闭包（本地读 metadata，约 0.3 秒，不联网）：这样"正在检索"那行就能报出真实总数
+  // （20 个包：7 直接 + 13 传递），而不是含糊的"7 个直接依赖 + 传递依赖"。
+  const tree = await collectDepTree(repoRoot, python)
+  if (tree) {
+    update({
+      directCount: tree.direct.length,
+      transitiveCount: tree.transitive.length,
+      total: tree.total,
+      pkgs: [...tree.direct, ...tree.transitive],
+    })
+    verbose(`依赖闭包：${tree.total} 个（${tree.direct.length} 直接 + ${tree.transitive.length} 传递）`)
+  }
+
   // 缓存命中：同一解释器 + requirements.txt 没改过 + 24h 内验证过。
   // 提示里必须写清"多久前验的、本次没重跑"，否则会被误读成"刚检查过"。
   const cacheHit =
@@ -714,7 +897,7 @@ async function ensureDeps(repoRoot) {
     verbose("缓存命中，跳过检查")
     const age = formatAge(now - (cached.checkedAt || 0))
     const when = age === "刚刚" ? "刚刚已" : `${age}前已`
-    warn(`✓ 依赖已在位（${reqCount} 个直接依赖，${when}验证；本次跳过重复检查）`)
+    warn(`✓ 依赖已在位（${counts()}，${when}验证；本次跳过重复检查）`)
     update({ phase: "ok", version: python.version, note: `（${when}验证）` })
     return { status: "ok", missing: [] }
   }
@@ -738,14 +921,14 @@ async function ensureDeps(repoRoot) {
       requirementsMtimeMs: reqMtime,
       checkedAt: now,
     })
-    warn(`✓ 依赖已在位（${reqCount} 个直接依赖全部满足 · CPython ${python.version}，无需下载）`)
+    warn(`✓ 依赖已在位（${counts()}，全部满足 · CPython ${python.version}，无需下载）`)
     update({ phase: "ok", version: python.version, note: "" })
     return { status: "ok", missing: [] }
   }
 
   verbose(`未满足: ${first.missing.join(", ") || first.detail}`)
   update({ phase: "installing", missing: first.missing })
-  const install = await installDeps(repoRoot, python, config, first.missing, reqCount)
+  const install = await installDeps(repoRoot, python, config, first.missing)
   if (!install.ok) {
     warn(`✗ 依赖安装失败：${install.detail}`)
     if (install.hint) warn(`  ${install.hint}`)
@@ -787,6 +970,18 @@ async function ensureDeps(repoRoot) {
     return { status: "failed", missing: second.missing }
   }
 
+  // 装完必须重算闭包：安装前那次数出来的是"当时已装的部分"，缺的包不在里面，
+  // 直接拿它显示会报出偏小的总数（比如 7 个），正是用户之前吐槽的那个错。
+  const afterTree = await collectDepTree(repoRoot, python)
+  if (afterTree) {
+    update({
+      directCount: afterTree.direct.length,
+      transitiveCount: afterTree.transitive.length,
+      total: afterTree.total,
+      pkgs: [...afterTree.direct, ...afterTree.transitive],
+    })
+  }
+
   writeState(repoRoot, {
     status: "ok",
     python: python.executable,
@@ -794,7 +989,7 @@ async function ensureDeps(repoRoot) {
     requirementsMtimeMs: reqMtime,
     checkedAt: now,
   })
-  warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，复检通过 · CPython ${python.version}）`)
+  warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，复检通过 · ${counts()}）`)
   if (install.installed) warn(`  本次装入：${install.installed}`)
   update({ phase: "ok", version: python.version, note: `（本次装入 ${install.elapsed}s）` })
   return { status: "installed", missing: [] }
@@ -813,6 +1008,43 @@ async function bootstrap() {
     return { status: "skipped", missing: [] }
   }
   return ensureDeps(repoRoot)
+}
+
+// ---------------------------------------------------------------------------
+// 依赖未就位时拦住用户指令
+//
+// 为什么必须拦：依赖缺了 Agent 照样能起来，但生成 PPT 时才会 `import matplotlib` 崩掉，
+// 用户看到的是"莫名其妙失败"，还得自己回溯到依赖问题。在这里挡住，原因当场可见。
+//
+// 用什么拦：`input` 事件返回 { action: "handled" } 会跳过整个 agent 运行。
+//   - 走 `input` 而不是 `before_agent_start`：前者在 skill/template 展开之前，
+//     拦得住 `/skill:xxx` 这类输入；后者已经在跑 turn 了。
+//   - `/` 开头的扩展命令不经过 input（pi 先查命令，命中就跳过 input），
+//     所以 /help /exit 这类照样能用，用户不会被锁死。
+//   - `!` bash 命令走 user_bash，不经过 agent，也就不拦——它不依赖 Python 包。
+//   - 扩展自己发的消息（source=extension）放行：拦了会打断别的扩展的流程，
+//     而且用户要拦的是"人敲进来的自然语言"。
+// ---------------------------------------------------------------------------
+function isReady() {
+  return snapshot.phase === "ok" || snapshot.phase === "skipped"
+}
+
+function blockReason() {
+  const s = snapshot
+  switch (s.phase) {
+    case "checking":
+      return `依赖正在检索（${counts()}），完成后才能接收指令。进度见输入框下方的状态行`
+    case "installing":
+      return `依赖正在从内网 server 下载（缺 ${s.missing.length || "?"} 个），装完才能接收指令。进度见输入框下方`
+    case "failed":
+      return `依赖未就位：${s.detail}。修好后重启 pi；完整原因见终端 [deps] 输出`
+    case "no-python":
+      return `未找到 CPython ${s.wantVersion || ""} 解释器，依赖没装。装好 3.12 后重启 pi（py -0 查看现有版本）`
+    case "no-pip":
+      return "pip 太老（需 >= 22.2），无法检查/安装依赖。升级 pip 后重启 pi"
+    default:
+      return "依赖还没就位，暂时不能接收指令。进度见输入框下方的状态行"
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -848,6 +1080,9 @@ export default function depsBootstrap(pi) {
       try {
         // 放输入框下方：aboveEditor 已被 pptagent-welcome 占了，别抢位置
         ctx.ui.setWidget("deps-status", lines.length ? lines : undefined, { placement: "belowEditor" })
+        // footer 常驻一条：依赖没就位时不光要在 widget 里说，也要在状态栏一直挂着，
+        // 否则 widget 滚上去就看不见了
+        ctx.ui.setStatus("deps", isReady() ? undefined : "依赖未就位")
       } catch {
         /* 会话已被替换，ctx 失效 */
       }
@@ -858,14 +1093,18 @@ export default function depsBootstrap(pi) {
     // 最多等 90 秒：装依赖可能几分钟，不能把 pi 卡死；超时先放行，装完 widget 自己会刷新
     await Promise.race([done, new Promise((resolve) => setTimeout(resolve, 90_000))])
     paint()
+  })
 
-    if (snapshot.phase !== "ok" && snapshot.phase !== "skipped") {
-      try {
-        ctx.ui.setStatus("deps", "依赖未就位")
-      } catch {
-        /* 同上 */
-      }
+  pi.on("input", async (event, ctx) => {
+    if (!event || event.source === "extension") return { action: "continue" }
+    if (isReady()) return { action: "continue" }
+
+    try {
+      ctx?.ui?.notify?.(blockReason(), "warning")
+    } catch {
+      /* 没有 UI 通道（print/json 模式）时静默，靠退出码与 stderr 说话 */
     }
+    return { action: "handled" }
   })
 
   pi.on("session_shutdown", () => {

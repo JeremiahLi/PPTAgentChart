@@ -538,3 +538,33 @@ pi 进 interactive 模式后切 alternate screen 并重绘，启动期写进 std
   某处误写成 `timeout` → `setTimeout(fn, undefined)` 按 0 处理 → 子进程刚起来就被
   KILL，输出为空、退出码非 0，检查**永远判失败**，还会误触发联网安装。现在函数内
   对非有限值兜底 120000ms。
+
+## 31. 报"依赖就位"必须报全量闭包，不能只报 requirements.txt 那几行
+
+（2026-11-18，用户第二次提同一件事）`requirements.txt` 写的是 7 个直接依赖，
+pip 实际要装 20 个（7 直接 + 13 传递）。widget 上写"7/7 直接依赖已就位"，
+用户读到的意思是"这套依赖只有 7 个、且都到位了"——传递依赖出问题时这句提示毫无解释力。
+三条别改回去：
+
+- **闭包用 `importlib.metadata` 本地递归算**（`collectDepTree`，约 0.3 秒，不联网）。
+  别想用 pip 拿：`--dry-run` 的输出只有直接依赖；`--report` 不含已满足项，
+  除非 `--ignore-installed`，而那必须联网——正是离线机做不到的事。
+- **装完必须重算闭包**。安装前那次数的是"当时已装的部分"，缺的包不在里面，
+  直接沿用会报出偏小的总数（比如只报装了 7 个）。
+- **判定与显示分家**：是否满足只信 pip 的 `--dry-run --no-index` 退出码；
+  闭包只用于显示。别让 `importlib.metadata` 的递归结果去决定装不装。
+
+## 32. 依赖未就位时要用 `input` 事件挡住用户指令
+
+（2026-11-18）依赖缺失不阻塞 pi 启动（刻意如此，起不来的 pi 没法排查），
+结果用户能正常输入、Agent 正常跑起来，直到生成 PPT 时 `import charts` 才崩——
+报错点在 matplotlib，真因在几十分钟前的依赖自举。
+
+- 用 `pi.on("input")` 返回 `{ action: "handled" }` 跳过整个 run。不要用
+  `before_agent_start`：那时 skill/template 已展开、run 已经开始。
+- `checking` / `installing` 也要拦，但提示语要说明"正在装，装完再来"，
+  否则用户连点几次都在等一个不会变的提示。
+- **拦不死人**：`/` 开头的扩展命令不经过 `input`（pi 的输入处理顺序：先查命令，
+  命中就跳过 input），`!` bash 命令走 `user_bash` 事件。所以 /help、/exit 始终可用。
+- `event.source === "extension"` 放行，否则别的扩展用 `sendUserMessage()` 推的消息
+  会被一起挡掉，表现为"某个功能莫名其妙没反应"。

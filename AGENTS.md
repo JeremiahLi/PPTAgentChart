@@ -72,23 +72,40 @@
 
 | 通道 | 内容 | 给谁看 |
 |---|---|---|
-| **TUI widget**（`deps-status`，输入框下方 `belowEditor`） | ⏳ 正在检索… / ⏳ 下载安装（带 pip 最新进度行）/ ✓ 已就位 7/7 / ✗ 未就位 + 一句怎么查 | **用户**。pi 进 interactive 模式会切 alternate screen 重绘，stderr 全被盖掉——2026-11-18 就是因此首页一片干净，用户压根不知道依赖检没检查 |
+| **TUI widget**（`deps-status`，输入框下方 `belowEditor`） | ⏳ 正在检索（20 个包：7 直接 + 13 传递）/ ⏳ 下载安装（带 pip 最新进度行）/ ✓ 已就位 20 个包 + 包清单 / ✗ 未就位 + 一句怎么查 | **用户**。pi 进 interactive 模式会切 alternate screen 重绘，stderr 全被盖掉——2026-11-18 就是因此首页一片干净，用户压根不知道依赖检没检查 |
 | stderr `[deps] ...` | 同上内容的完整版 + 手动重试命令 | CLI / print 模式 / 日志 / 排查 |
 
-失败时额外 `ctx.ui.setStatus("deps", "依赖未就位")` 在 footer 常驻一行。
+依赖不是 `ok` 时，footer 常驻一行 `ctx.ui.setStatus("deps", "依赖未就位")`，每次重绘同步更新。
+
+**依赖没就位时用户指令会被挡住**（`pi.on("input")` 返回 `{ action: "handled" }`）：
+
+- 拦的是 `checking` / `installing` / `failed` / `no-python` / `no-pip` 五种状态；
+  `ok` 与 `skipped`（含 `PI_DEPS_SKIP=1`）放行。
+- 拦下来时用 `ctx.ui.notify(原因, "warning")` 说明为什么，不静默丢消息。
+- 为什么拦：依赖缺了 Agent 照样能起，但生成 PPT 时才 `import matplotlib` 崩，
+  用户看到的是莫名失败。挡在输入处，原因当场可见。
+- **不会把人锁死**：`/` 开头的扩展命令不经过 `input` 事件（pi 先查命令），
+  `/help`、`/exit` 照常可用；`!` bash 命令走 `user_bash`，也不拦。
+- 扩展自己发的消息（`event.source === "extension"`）放行，免得打断别的扩展流程。
 
 **启动时终端/stderr 会看到的七种行**（前缀 `[deps]`）：
 
 ```
+依赖闭包：20 个（7 直接 + 13 传递）                                ← 本地读 metadata 算的，PI_DEPS_VERBOSE=1 才显示
 检查依赖是否就位（本地比对，不联网，约 10 秒）...                   ← 非缓存命中时先报这句
-✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；本次跳过重复检查）   ← 24h 缓存命中，没重跑
-✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10，无需下载）    ← 真跑过 pip 检查
-依赖未就位（缺 3/7：numpy, pillow, ...），开始从内网 server 下载：<url>
+✓ 依赖已在位（20 个包：7 直接 + 13 传递，3.2 小时前已验证；本次跳过重复检查） ← 24h 缓存命中，没重跑
+✓ 依赖已在位（20 个包：7 直接 + 13 传递，全部满足 · CPython 3.12.10，无需下载） ← 真跑过 pip 检查
+依赖未就位（3 个未满足：numpy, pillow, ...），开始从内网 server 下载：<url>
 pip 实时输出如下（下载进度即时刷新）...                           ← 后面是 pip 的逐包下载输出
-✓ 依赖安装完成（耗时 42s，复检通过 · CPython 3.12.10） + 本次装入：a-1.0 b-2.0 …
+✓ 依赖安装完成（耗时 42s，复检通过 · 20 个包：7 直接 + 13 传递） + 本次装入：a-1.0 b-2.0 …
 ✗ 依赖安装失败：内网 server 拒绝连接（172.30.39.34:8765）：这台机器到该 IP/端口不通…
 ! 未找到 CPython 3.12 解释器，本次跳过依赖检查，依赖不会被安装   ← 每次都打，不吃缓存
 ```
+
+**口径是全部依赖，不是 requirements.txt 那 7 行**：`requirements.txt` 只写 7 个直接依赖，
+pip 会顺着依赖树再装 13 个传递依赖。闭包由 `collectDepTree` 用 `importlib.metadata`
+在本地递归算出（不联网、约 0.3 秒，装完会重算），**但"是否满足"仍由 pip 的 `--dry-run`
+裁定**——分工别搞混：闭包只管显示，判定权威只有 pip。
 
 失败原因是 pip 原始报错翻成的人话，分类顺序是"先判没连上、再判连上了没这个包"——
 两种情形 pip 都会吐 `No matching distribution found`，顺序反了就会把断网误报成缺包。
