@@ -15,8 +15,10 @@
 `setup.bat` 走第二条：先按解释器 minor 版本找 `py312/` 这种子目录（pip 的 `--find-links`
 不递归，**必须指到子目录**），找不到才转内网镜像。
 
-pi 启动时的自举（`.pi/extensions/deps-bootstrap.ts`）**只认 `.pi/deps.json` 的 `indexUrl`**，
-不回退公网、也不读本目录——依赖统一由内网 server 供应，本目录是另一条要手工维护的路径。
+pi 启动时的自举（`.pi/extensions/deps-bootstrap.ts`）**只认文件顶部 `CONFIG.indexUrl`**（固定值，
+无配置文件、无环境变量可改），不回退公网、也不读本目录——依赖统一由内网 server 供应，
+本目录是另一条要手工维护的路径。自举的依赖清单内联在 `CONFIG.requirements` 里，
+**改版本时它和本文件、和仓库根 `requirements.txt` 三处要对齐**。
 
 ## 内网 server 上必须齐的 20 个文件
 

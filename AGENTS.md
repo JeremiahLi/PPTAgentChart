@@ -59,15 +59,15 @@
 | 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走内网镜像 |
 | 换机 / 补包 | `.pi/wheels/README.md` | `pip download` 到对应版本子目录 |
 
-> **依赖只有一条安装通路：内网 server（`.pi/deps.json` 的 `indexUrl`）。**
+> **依赖只有一条安装通路：内网 server（扩展文件顶部 `CONFIG.indexUrl`，固定值）。**
 > 自举**不回退公网 PyPI、也不读 `.pi/wheels` 本地目录**——离线机连不上公网，回退只会白等；
-> 本地包是另一条要维护的路径，已从自举里删除。地址有内置默认值（`DEFAULT_INDEX_URL`），
-> 配错或换环境用配置覆盖，**永不偷偷回退公网 PyPI**。
+> 本地包是另一条要维护的路径，已从自举里删除。地址写死在 `CONFIG` 里，**既没有配置文件也没有
+> 环境变量能改它**，永不偷偷回退公网 PyPI。
 >
 > **开发机到不了那个内网 IP，这是正常状态**：源码在这边写、拷到离线 PC 上跑，只有那台机器能连通
 > server。所以别在开发机上试连 `172.30.39.34`（只会白等超时），也别指望开发机能验证下载路径——
 > 下载链路的验证只能在离线 PC 上做。开发机上能验证的只有：检查分支（`--no-index`，纯本地）、
-> 未配置地址的报错、以及失败原因分类（用回环地址 `127.0.0.1:9` 造连接拒绝）。
+> 以及失败原因分类（用回环地址 `127.0.0.1:9` 造连接拒绝）。
 
 **两套输出通道，缺一不可**：
 
@@ -94,14 +94,14 @@
 ```
 1/7 定位 CPython 3.12 解释器
     ✓ C://...//pythoncore-3.12-64//python.exe（3.12）
-2/7 统计依赖闭包（requirements.txt）
+2/7 统计依赖闭包（内置清单 7 条）
     ✓ 统计完成：20 个包（7 直接 + 13 传递）
 3/7 读取依赖来源地址
-    ✓ http://172.30.39.34:18080/simple（来自 .pi/deps.json）
+    ✓ http://172.30.39.34:18080/simple（来自扩展内置配置）
 4/7 本地比对已装环境（pip --dry-run --no-index，不联网，约 10 秒）
     ✓ 20 个包：7 直接 + 13 传递 全部满足，无需下载
 ✓ 依赖已在位（20 个包：7 直接 + 13 传递，全部满足 · CPython 3.12，无需下载）
-  来源 http://172.30.39.34:18080/simple（来自 .pi/deps.json，本次未下载）
+  来源 http://172.30.39.34:18080/simple（来自扩展内置配置，本次未下载）
   解释器 C://...//pythoncore-3.12-64//python.exe
 ```
 
@@ -147,44 +147,48 @@ pip 会顺着依赖树再装 13 个传递依赖。闭包由 `collectDepTree` 用
 （`pip --dry-run --no-index` 实测），每次启动都跑不可接受。要立刻真查：`PI_DEPS_FORCE=1 pi`。
 
 **判定方式**：不猜 import 名、不自己比版本——直接跑
-`pip install --dry-run --no-index -r requirements.txt`，退出码 0 = 全部满足（含版本约束）。
+`pip install --dry-run --no-index -r <内置清单落成的临时文件>`，退出码 0 = 全部满足（含版本约束）。
 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护，
 `numpy==2.4.6` 是否真装对也由 pip 权威实现负责。
 
-## 这是一个可以拷走的通用脚本
+## 完全自包含的单文件脚本
 
-`.pi/extensions/deps-bootstrap.ts` **不绑定本项目**，任何有 `requirements.txt` 的 pi 项目
-丢进 `.pi/extensions/` 就能用（放 `~/.pi/agent/extensions/` 则全局生效）：
+`.pi/extensions/deps-bootstrap.ts` **不绑定本项目、不读任何外部配置文件**：一个 .ts 丢进任意
+pi 项目的 `.pi/extensions/`（放 `~/.pi/agent/extensions/` 则全局生效）就能工作。
 
-- **内网 server 地址内置成默认值**（`DEFAULT_INDEX_URL`），零配置即可工作；
-  换环境时用 `.pi/deps.json` 的 `indexUrl` 或 `PI_PIP_INDEX_URL` 覆盖，**不要改代码**——
-  改代码的后果是拷给别人时把别人的地址也一起改了。
-- 仓库根靠"有 `requirements.txt` 或 `.pi/deps.json`"识别；清单文件名/子目录不同时，
-  用 `.pi/deps.json` 的 `requirements` 字段指路。
-- 状态缓存写在项目自己的 `.pi/work/.deps-state.json`，不会跨项目串。
-- 不想要"未就位时拦指令"？`.pi/deps.json` 里 `blockOnMissing: false` 或 `PI_DEPS_GATE=0`。
-- **仍然强制内网 server 单源**：不回退公网 PyPI、不读 `.pi/wheels`。
+**所有配置都在文件顶部的 `CONFIG` 常量里**（约第 100 行），三样：`python` / `indexUrl` /
+`requirements`（依赖清单数组）。要改地址、改解释器版本、改依赖就改这三处，没有第二份配置。
 
-**本项目靠 `.pi/deps.json` 落地两个私有约束**：
+- `.pi/deps.json` **已删除**：它曾经承载 `python` / `indexUrl` / `timeoutMinutes` /
+  `requirements` / `blockOnMissing`，现在全部并入 `CONFIG`。环境变量 `PI_PIP_INDEX_URL`、
+  `PI_DEPS_PY_VERSION`、`PI_DEPS_TIMEOUT_MIN` 也都移除了——地址"固定不变"就是这么落实的，
+  不存在"某台机器上被环境变量改了却不知道"的情况。
+- 仓库根靠**向上 3 层内的 `.pi` 目录**识别，不再依赖 `requirements.txt` 是否存在。
+- 依赖清单内联后，pip 的 `-r` 指向系统临时目录里的 `pi-deps-bootstrap-req.txt`（每次启动重写）。
+  所以即使项目里没有 `requirements.txt` 也能判定。
+- **`CONFIG.requirements` 与仓库根 `requirements.txt` 必须同步**：后者仍供 `setup.bat` 离线装包
+  和人工 pip 使用。两者不一致时启动会打一行 `! 内置依赖清单与 requirements.txt 不一致`，
+  并列出差异项——漂移可见，不静默。
+- 状态缓存写在项目自己的 `.pi/work/.deps-state.json`，键含清单指纹，不会跨项目串。
+- 不想要"未就位时拦指令"？改 `CONFIG.gate: false` 或临时设 `PI_DEPS_GATE=0`。
+- **强制内网 server 单源**：不回退公网 PyPI、不读 `.pi/wheels`。
 
-```json
-{ "python": "3.12", "indexUrl": "http://172.30.39.34:18080/simple" }
+本项目的两个私有约束就写在这三行里：
+
+```ts
+python: "3.12",                              // 只认 3.12，找不到就每次提示（不吃缓存）
+indexUrl: "http://172.30.39.34:18080/simple", // 内网镜像，装包唯一来源
+requirements: [ /* 7 个直接依赖 */ ],          // 传递依赖 13 个由 pip 自行解析
 ```
 
-- `python: "3.12"` → 只认 3.12 解释器，找不到就跳过并每次提示（不吃缓存）；不配则用
-  PATH 上的 python，不看版本。
-- `indexUrl` → 内网镜像，**装包唯一来源**，pip 标准索引路径 `/simple`（不是 `/simples`）。
-  脚本会自动补 `--trusted-host`（http 源不带会被 pip 直接拒绝）。
-  **不配就用内置默认值**，所以零配置也能跑；配了就优先用配置，绝不回退公网 PyPI。
-- `requirements` → 清单文件相对路径，默认 `requirements.txt`（其他项目布局不同时用）。
-- `blockOnMissing` → 依赖未就位时是否拦用户指令，默认 `true`；`false` 则不拦。
-- 日志里的"来自 XXX"会明说是**内置默认地址**、`.pi/deps.json` 还是**环境变量**——
-  排查时先看这一行，能省掉"到底读了哪份配置"的猜谜。
+- `indexUrl` 走 pip 标准索引路径 `/simple`（不是 `/simples`）；脚本会自动补 `--trusted-host`
+  （http 源不带会被 pip 直接拒绝）。
+- 日志里的"来自XXX"现在固定是 `扩展内置配置`——不存在"到底读了哪份配置"的猜谜空间了。
 - 安装失败**不阻塞 pi 启动**，只打警告 + 人话原因 + 手动重试命令——起不来的 pi 没法排查问题。
-- 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、`PI_DEPS_FORCE=1` 忽略 24h 缓存强制重查、
-  `PI_DEPS_VERIFY=1` 预检内网 server 能否取全（只查询不安装，退出码 0/1，只在离线 PC 上跑）、
-  `PI_DEPS_NO_PROBE=1` 跳过第 5 步的连通性探测、`PI_DEPS_GATE=0` 不拦用户指令、
-  `PI_PIP_INDEX_URL` / `PI_DEPS_PY_VERSION` / `PI_DEPS_TIMEOUT_MIN` 覆盖 deps.json。
+- 应急开关（只有这些，不碰配置）：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、
+  `PI_DEPS_FORCE=1` 忽略 24h 缓存强制重查、`PI_DEPS_VERIFY=1` 预检 server 能否取全
+  （只查询不安装，退出码 0/1，只在离线 PC 上跑）、`PI_DEPS_NO_PROBE=1` 跳过第 5 步探测、
+  `PI_DEPS_GATE=0` 不拦用户指令。
 - **server 端要齐的不是 7 个包，是 20 个**：7 个直接依赖 + 13 个传递依赖（清单见
   `.pi/wheels/README.md`）。少一个传递依赖，pip 会转去找 sdist、离线机没编译链就失败。
   另外 server 得是合规的 PEP 503 索引（`/simple/<包名>/` 有文件链接），

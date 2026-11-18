@@ -6,14 +6,13 @@
  *       pi 文档：工厂函数返回 Promise 时，pi 会 await 它再继续启动
  *       （docs/extensions.md「Writing an Extension」）。所以这里做成 async 工厂。
  *
- * 唯一安装来源：**内网 server**（`.pi/deps.json` 的 `indexUrl`）。
+ * 唯一安装来源：**内网 server**（本文件内 `CONFIG.indexUrl`，固定值）。
  *   - 不回退公网 PyPI：离线机连不上，回退只会白等；配错了也不该被兜底掩盖。
  *   - 不使用 `.pi/wheels` 本地目录：依赖全部由内网 server 供应，本地包是另一条要维护的路径。
- *   - 没配 `indexUrl` 就**直接报错**，不猜地址、不偷偷走公网。
- *   - 开发机到不了内网 IP，所以本脚本不做任何"先探测一下能不能连"的试探，直接按配置下。
+ *   - 地址写死在代码里，**不接受文件或环境变量覆盖**——要换就改这一处。
  *
  * 判据：不猜 import 名、不自己比版本，直接让 pip 判断——
- *       `pip install --dry-run --no-index -r requirements.txt`（纯本地比对，不联网）
+ *       `pip install --dry-run --no-index -r <内置清单落成的临时文件>`（纯本地比对，不联网）
  *       退出码 0 = 全部满足（含版本约束）；非 0 = 缺包或版本不符。
  *       这样 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护。
  *
@@ -31,29 +30,24 @@
  *   完成        `✓ 依赖安装完成（耗时 42s，复检通过 · CPython 3.12.10）` + `本次装入：a-1.0 b-2.0 …`
  *   失败        `✗ 依赖安装失败：<人话原因>` + 手动重试命令
  *
- * 配置：`<仓库根>/.pi/deps.json`（全部字段可选）
- *   {
- *     "python": "3.12",                              // 限定解释器版本；不填=用 PATH 上的 python
- *     "indexUrl": "http://172.30.39.34:18080/simple",  // **内网 server，装包唯一来源**
- *     "timeoutMinutes": 15                            // 安装超时，默认 15
- *   }
+ * 配置：**全部内联在本文件的 CONFIG 常量里**（约第 100 行），不读任何外部配置文件。
+ *   - `.pi/deps.json` 已废弃并删除：地址、解释器版本、超时、清单都在 CONFIG 里。
+ *   - 依赖清单也内联（`CONFIG.requirements`），不再从 requirements.txt 读取判定依据。
+ *     requirements.txt 仍保留给 setup.bat / 人工 pip 使用，改了 CONFIG 就必须同步它；
+ *     两者不一致时启动会打一行 warn，不会静默漂移。
  *
- * 环境变量（优先级高于 deps.json）：
- *   PI_DEPS_PY_VERSION   同 python
- *   PI_PIP_INDEX_URL     同 indexUrl
- *   PI_DEPS_TIMEOUT_MIN  同 timeoutMinutes
+ * 环境变量只剩**应急开关**（不是配置，按需临时设，不影响地址与清单）：
  *   PI_DEPS_SKIP=1       完全跳过（应急）
  *   PI_DEPS_FORCE=1      忽略 24h 缓存，强制真跑一次检查
  *   PI_DEPS_VERIFY=1     预检模式：只向 server 查询能否取全，不安装、不写状态，退出码 0/1
  *   PI_DEPS_VERBOSE=1    打印判定过程
  *   PI_DEPS_CLI=1        命令行模式（检查/安装后退出，不挂到 pi 上）
  *   PI_DEPS_GATE=0       依赖未就位时不拦用户指令（默认拦）
+ *   PI_DEPS_NO_PROBE=1   跳过第 5 步的连通性探测
  *
- * 这个脚本是**通用的**，不绑定本项目：任何有 requirements.txt 的 pi 项目把它丢进
- * `.pi/extensions/` 就能用（放 `~/.pi/agent/extensions/` 则全局生效）。
- * 内网 server 地址内置成默认值（DEFAULT_INDEX_URL），**零配置即可工作**；
- * 换环境时用 `.pi/deps.json` 或 `PI_PIP_INDEX_URL` 覆盖，不用改代码。
- * 依赖判定完全交给 pip，所以 `Pillow→PIL`、`python-pptx→pptx` 这类映射一概不用维护。
+ * 这个脚本是**完全自包含**的：一个 .ts 文件丢进任意 pi 项目的 `.pi/extensions/`
+ * （或 `~/.pi/agent/extensions/` 全局）就能工作——不需要 deps.json、不需要额外配置，
+ * 依赖清单与内网地址都在文件里。唯一的运行时输入是"当前目录往上 3 层内有没有 `.pi`"。
  *
  * 两套输出通道，两条都要留着：
  *   1) TUI widget（首页可见）—— `session_start` + `ctx.ui.setWidget("deps-status", ..., belowEditor)`。
@@ -88,20 +82,45 @@ import * as net from "node:net"
 import * as http from "node:http"
 import * as https from "node:https"
 import * as fs from "node:fs"
+import * as os from "node:os"
 import * as path from "node:path"
 
-const CONFIG_FILE = ".pi/deps.json"
 const STATE_FILE = ".pi/work/.deps-state.json"
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const CHECK_TIMEOUT_MS = 180 * 1000
 const PROBE_TIMEOUT_MS = 5000
 
-/**
- * 内网 server 地址：**内置默认值**，让脚本零配置可用。
- * 换机器/换项目时不要去改这里，用 `.pi/deps.json` 的 indexUrl 或 PI_PIP_INDEX_URL 覆盖。
- * 改代码的后果是：拷贝给别人时把别人的地址也一起改了。
- */
-const DEFAULT_INDEX_URL = "http://172.30.39.34:18080/simple"
+// ---------------------------------------------------------------------------
+// 全部配置。这是**唯一**的配置来源：不读 .pi/deps.json、不读 requirements.txt、
+// 不接受 PI_PIP_INDEX_URL / PI_DEPS_PY_VERSION / PI_DEPS_TIMEOUT_MIN 这类覆盖。
+// 要换地址、换解释器版本、换依赖清单——改这里，别去环境里设变量。
+// ---------------------------------------------------------------------------
+const CONFIG = {
+  // 目标解释器：只认这个精确版本；设 null 则用 PATH 上第一个能跑起来的 python
+  python: "3.12",
+
+  // 内网 server：装包唯一来源，固定值，不回退公网 PyPI
+  indexUrl: "http://172.30.39.34:18080/simple",
+
+  // 安装总超时（分钟）
+  timeoutMinutes: 15,
+
+  // 依赖未就位时是否拦用户指令
+  gate: true,
+
+  // 直接依赖清单：内联即唯一真相。
+  // 改了这里必须同步仓库根 requirements.txt（setup.bat / 人工 pip 用的那份）；
+  // 两者不一致时启动会 warn 一行，不会静默漂移。传递依赖由 pip 自行解析，不用写。
+  requirements: [
+    "python-pptx==1.0.2",
+    "lxml==6.1.3",
+    "pydantic==2.13.5",
+    "matplotlib==3.11.2",
+    "numpy==2.4.6",
+    "Pillow==12.3.0",
+    "PyYAML==6.0.3",
+  ],
+}
 
 function verbose(msg) {
   if (process.env.PI_DEPS_VERBOSE) process.stderr.write(`[deps] ${msg}\n`)
@@ -122,7 +141,7 @@ function warn(msg) {
 // ---------------------------------------------------------------------------
 const snapshot = {
   phase: "init", // init | checking | installing | ok | failed | no-python | no-pip | skipped
-  reqCount: 0, // requirements.txt 里的直接依赖条数
+  reqCount: 0, // 内置清单里的直接依赖条数
   directCount: 0, // 闭包里实际解析到的直接依赖个数
   transitiveCount: 0, // 闭包里传递依赖个数
   total: 0, // directCount + transitiveCount（用户要看的是这个）
@@ -344,7 +363,7 @@ const FATAL_TCP_CODES = new Set([
 async function probeServer(indexUrl) {
   const target = parseIndexUrl(indexUrl)
   if (!target) {
-    return { ok: false, fatal: true, lines: ["✗ indexUrl 不是合法 URL，检查 .pi/deps.json 的 indexUrl"] }
+    return { ok: false, fatal: true, lines: ["✗ CONFIG.indexUrl 不是合法 URL（本文件顶部的 CONFIG 常量）"] }
   }
 
   const tcp = await probeTcp(target.host, target.port, PROBE_TIMEOUT_MS)
@@ -454,17 +473,15 @@ function renderStatus() {
 }
 
 /**
- * 从起始目录向上找仓库根：有 requirements.txt 的那一层。
- * 只上溯 3 层——再往上容易跨进父目录的另一个无关项目，把依赖装错地方。
- * 刻意不用「扩展文件自身位置」兜底：那会让任何无关项目都去检查本仓库的
- * requirements.txt，并在那里执行 pip install。
+ * 从起始目录向上找项目根：有 `.pi` 目录的那一层。
+ * 只上溯 3 层——再往上容易跨进父目录的另一个无关项目，把缓存/临时脚本写错地方。
+ * 为什么认 `.pi` 而不认 requirements.txt：本文件完全自包含，不依赖清单文件存在；
+ * 而它自己就住在 `.pi/extensions/` 下，所以 `.pi` 必然存在，是最稳的锚点。
  */
 function findRepoRoot(start) {
   let dir = start
   for (let i = 0; i < 3; i += 1) {
-    // 有 requirements.txt 或 .pi/deps.json 都算仓库根：后者让"依赖清单不叫
-    // requirements.txt"的项目也能定位（配置里再用 requirements 字段指真实路径）
-    if (fs.existsSync(path.join(dir, "requirements.txt")) || fs.existsSync(path.join(dir, CONFIG_FILE))) {
+    if (fs.existsSync(path.join(dir, ".pi"))) {
       return dir
     }
     const parent = path.dirname(dir)
@@ -475,56 +492,75 @@ function findRepoRoot(start) {
 }
 
 /**
- * 读配置：内置默认 ← .pi/deps.json ← 环境变量（后者覆盖前者）。
- * indexUrl 的默认值就是 DEFAULT_INDEX_URL，所以**不配任何文件也能跑**——
- * 这是"拷给别的项目直接用"的前提。
+ * 取配置：直接返回内联常量的一份拷贝。
+ * 保留函数形态是为了调用点不用改，也留一个将来加校验的位置（比如断言 indexUrl 是合法 URL）。
+ * 不做任何文件读取、不接受环境变量覆盖——"固定不变"就是这么落实的。
  */
-function readConfig(repoRoot) {
+function readConfig() {
   const config = {
-    python: null,
-    indexUrl: DEFAULT_INDEX_URL,
-    timeoutMinutes: 15,
-    requirements: "requirements.txt", // 相对仓库根；其他项目布局不同时可在此指定
-    gate: true, // 依赖未就位时是否拦用户指令
-    origin: "内置默认地址",
+    python: CONFIG.python,
+    indexUrl: CONFIG.indexUrl,
+    timeoutMinutes: CONFIG.timeoutMinutes,
+    gate: CONFIG.gate,
+    origin: "扩展内置配置",
   }
-
-  try {
-    const raw = JSON.parse(fs.readFileSync(path.join(repoRoot, CONFIG_FILE), "utf8"))
-    if (typeof raw.python === "string" && raw.python.trim()) config.python = raw.python.trim()
-    if (typeof raw.indexUrl === "string" && raw.indexUrl.trim()) {
-      config.indexUrl = raw.indexUrl.trim()
-      config.origin = CONFIG_FILE
-    }
-    if (Number.isFinite(raw.timeoutMinutes) && raw.timeoutMinutes > 0) {
-      config.timeoutMinutes = raw.timeoutMinutes
-    }
-    if (typeof raw.requirements === "string" && raw.requirements.trim()) {
-      config.requirements = raw.requirements.trim()
-    }
-    if (typeof raw.blockOnMissing === "boolean") config.gate = raw.blockOnMissing
-    verbose(`配置: ${JSON.stringify({ ...config })}（来自 ${CONFIG_FILE}）`)
-  } catch {
-    /* 没有配置文件是正常情况——默认值已经够用 */
-  }
-
-  if (process.env.PI_DEPS_PY_VERSION) config.python = process.env.PI_DEPS_PY_VERSION.trim()
-  if (process.env.PI_PIP_INDEX_URL) {
-    config.indexUrl = process.env.PI_PIP_INDEX_URL.trim()
-    config.origin = "环境变量 PI_PIP_INDEX_URL"
-  }
-  const envTimeout = Number(process.env.PI_DEPS_TIMEOUT_MIN)
-  if (Number.isFinite(envTimeout) && envTimeout > 0) config.timeoutMinutes = envTimeout
   if (process.env.PI_DEPS_GATE === "0") config.gate = false
-
+  verbose(`配置: ${JSON.stringify(config)}（来自扩展内置 CONFIG）`)
   return config
 }
 
-/** requirements 文件的绝对路径（配置里可改文件名/子目录）。 */
-function reqFileOf(repoRoot, config) {
-  return path.isAbsolute(config.requirements)
-    ? config.requirements
-    : path.join(repoRoot, config.requirements)
+/**
+ * 把内联的依赖清单落成一个临时文件，供 pip 的 `-r` 使用。
+ *
+ * 为什么要落盘而不是只留内存：pip 只认文件，不认内存里的数组。写到系统临时目录
+ * 而不是项目里，是为了不往仓库塞产物、也不受只读目录限制；文件名固定，覆盖写。
+ * 这样本文件就不需要 requirements.txt 存在——"完全独立"落在这一个函数上。
+ */
+let reqFilePath = null
+
+function ensureReqFile(repoRoot) {
+  if (reqFilePath) return reqFilePath
+  const file = path.join(os.tmpdir(), "pi-deps-bootstrap-req.txt")
+  try {
+    fs.writeFileSync(file, `${CONFIG.requirements.join("\n")}\n`, "utf8")
+    reqFilePath = file
+  } catch (err) {
+    // 写不进临时目录时退回仓库根的清单（存在才用），总比完全跑不起来强
+    warn(`✗ 无法写入临时清单 ${file}：${err.message}`)
+    reqFilePath = path.join(repoRoot, "requirements.txt")
+    return reqFilePath
+  }
+  checkAgainstRepoList(repoRoot)
+  return file
+}
+
+/**
+ * 内置清单与 requirements.txt 的一致性校验。
+ * 为什么需要：清单有两份（本文件给自举判定用，requirements.txt 给 setup.bat 与人工装包用），
+ * 漂移了会变成"自举说齐了、手工装又是另一套"这种最难查的问题。发现不一致就打 warn，
+ * 不静默。requirements.txt 不存在不算错——本文件本来就要求不依赖它。
+ */
+function checkAgainstRepoList(repoRoot) {
+  const repoList = path.join(repoRoot, "requirements.txt")
+  let text
+  try {
+    text = fs.readFileSync(repoList, "utf8")
+  } catch {
+    return
+  }
+  const norm = (s) =>
+    s
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+  const inFile = norm(text)
+  const inCode = CONFIG.requirements
+  const onlyCode = inCode.filter((item) => !inFile.includes(item))
+  const onlyFile = inFile.filter((item) => !inCode.includes(item))
+  if (!onlyCode.length && !onlyFile.length) return
+  warn("! 内置依赖清单与 requirements.txt 不一致（自举判定以 CONFIG.requirements 为准）")
+  if (onlyCode.length) warn(`  仅内置：${onlyCode.join(", ")}`)
+  if (onlyFile.length) warn(`  仅 requirements.txt：${onlyFile.join(", ")}`)
 }
 
 function run(cmd, args, opts = {}) {
@@ -656,24 +692,21 @@ function writeState(repoRoot, state) {
   }
 }
 
-function requirementsMtime(reqFile) {
-  try {
-    return fs.statSync(reqFile).mtimeMs
-  } catch {
-    return 0
-  }
+/**
+ * 清单指纹，用于缓存失效判定。
+ * 原来用 requirements.txt 的 mtime；清单内联后没有文件可看，改成对清单内容取简单哈希——
+ * 语义等价：清单变了缓存就该失效，没变就不该重跑 11 秒的 pip dry-run。
+ */
+function requirementsStamp() {
+  const text = CONFIG.requirements.join("|")
+  let hash = 0
+  for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) | 0
+  return `${CONFIG.requirements.length}-${hash}`
 }
 
-/** 直接依赖条数（去掉空行与注释），只用于提示语里报个数。 */
-function countRequirements(reqFile) {
-  try {
-    return fs
-      .readFileSync(reqFile, "utf8")
-      .split(/\r?\n/)
-      .filter((line) => line.trim() && !line.trim().startsWith("#")).length
-  } catch {
-    return 0
-  }
+/** 直接依赖条数，只用于提示语里报个数。 */
+function countRequirements() {
+  return CONFIG.requirements.length
 }
 
 // ---------------------------------------------------------------------------
@@ -897,7 +930,7 @@ function explainFailure(output, indexUrl) {
   }
   if (/No matching distribution found for ([^\s(]+)/i.test(text)) {
     const m = text.match(/No matching distribution found for ([^\s(]+)/i)
-    return `内网 server 上没有 ${m ? m[1] : "所需版本"}：该包未同步到镜像，或镜像里的版本与 requirements.txt 不一致`
+    return `内网 server 上没有 ${m ? m[1] : "所需版本"}：该包未同步到镜像，或镜像里的版本与内置清单不一致`
   }
   if (/SSLError|certificate verify failed/i.test(text)) {
     return "证书校验失败：http 源已自动加 --trusted-host；https 自签名证书需要把 CA 装进系统信任区"
@@ -961,8 +994,8 @@ async function installDeps(repoRoot, python, config, missing, reqFile) {
       elapsed: 0,
       output: "",
       installed: null,
-      detail: "未配置内网 server 地址，拒绝走公网 PyPI",
-      hint: `在 ${CONFIG_FILE} 里写 {"indexUrl": "http://<内网IP>:<端口>/simple"}`,
+      detail: "CONFIG.indexUrl 为空，拒绝走公网 PyPI",
+      hint: "把本文件顶部的 CONFIG.indexUrl 改回内网地址后重开 pi",
     }
   }
 
@@ -1015,7 +1048,7 @@ async function installDeps(repoRoot, python, config, missing, reqFile) {
       output: result.output,
       installed: null,
       detail: `下载超过 ${config.timeoutMinutes} 分钟未完成（内网 server 太慢或卡住）`,
-      hint: "加大超时：设 PI_DEPS_TIMEOUT_MIN=30 后重启 pi",
+      hint: `加大超时：把本文件 CONFIG.timeoutMinutes 改成 30 后重开 pi（当前 ${config.timeoutMinutes}）`,
     }
   }
   if (result.error) {
@@ -1025,7 +1058,7 @@ async function installDeps(repoRoot, python, config, missing, reqFile) {
       output: result.output,
       installed: null,
       detail: `pip 无法启动：${result.error.message}`,
-      hint: `手动重试：${python.executable} -m pip install -r requirements.txt`,
+      hint: `手动重试：${python.executable} -m pip install --index-url ${config.indexUrl} -r ${reqFile}`,
     }
   }
   if (result.code !== 0) {
@@ -1035,7 +1068,7 @@ async function installDeps(repoRoot, python, config, missing, reqFile) {
       output: result.output,
       installed: null,
       detail: explainFailure(result.output, config.indexUrl),
-      hint: `手动重试：${python.executable} -m pip install --index-url ${config.indexUrl} -r requirements.txt`,
+      hint: `手动重试：${python.executable} -m pip install --index-url ${config.indexUrl} -r ${reqFile}`,
     }
   }
 
@@ -1058,16 +1091,16 @@ async function installDeps(repoRoot, python, config, missing, reqFile) {
  * 预检就退化成自查，白跑一遍。
  */
 async function verifyAgainstServer(repoRoot) {
-  const config = readConfig(repoRoot)
-  const reqFile = reqFileOf(repoRoot, config)
-  const reqCount = countRequirements(reqFile)
+  const config = readConfig()
+  const reqFile = ensureReqFile(repoRoot)
+  const reqCount = countRequirements()
   const python = resolvePython(config)
   if (!python) {
     warn("! 未找到匹配的解释器，无法预检（py -0 查看本机已装版本）")
     return { status: "no-python", missing: [] }
   }
   if (!config.indexUrl) {
-    warn("✗ 未配置内网 server 地址（.pi/deps.json 的 indexUrl），无法预检")
+    warn("✗ CONFIG.indexUrl 为空，无法预检（本文件顶部的 CONFIG 常量被改坏了）")
     return { status: "no-index", missing: [] }
   }
   if (!(await pipSupportsDryRun(python))) {
@@ -1115,7 +1148,7 @@ async function verifyAgainstServer(repoRoot) {
   }
 
   const would = (result.output.match(/Would install ([^\r\n]+)/i) || [])[1]
-  warn("✓ 预检通过：requirements.txt 的直接依赖与传递依赖都能从内网 server 取到")
+  warn("✓ 预检通过：内置清单的直接依赖与传递依赖都能从内网 server 取到")
   if (would) {
     const pkgs = would.trim().split(/\s+/).filter(Boolean)
     const shown = pkgs.length > 8 ? `${pkgs.slice(0, 8).join("  ")}  …等 ${pkgs.length} 个` : pkgs.join("  ")
@@ -1133,10 +1166,10 @@ async function verifyAgainstServer(repoRoot) {
  *   failed    安装或验证失败
  */
 async function ensureDeps(repoRoot) {
-  const config = readConfig(repoRoot)
-  const reqFile = reqFileOf(repoRoot, config)
-  const reqMtime = requirementsMtime(reqFile)
-  const reqCount = countRequirements(reqFile)
+  const config = readConfig()
+  const reqFile = ensureReqFile(repoRoot)
+  const reqStamp = requirementsStamp()
+  const reqCount = countRequirements()
   const cached = readState(repoRoot)
   const now = Date.now()
   const force = process.env.PI_DEPS_FORCE === "1"
@@ -1153,7 +1186,7 @@ async function ensureDeps(repoRoot) {
     const hint = config.python ? ` CPython ${config.python}` : ""
     stepInfo(`✗ 没有找到${hint}解释器，依赖一个都装不了`)
     warn("  py -0 查看本机已装版本；装好后重开 pi 即生效（PI_DEPS_SKIP=1 可静音）")
-    writeState(repoRoot, { status: "no-python", checkedAt: now, requirementsMtimeMs: reqMtime })
+    writeState(repoRoot, { status: "no-python", checkedAt: now, requirementsStamp: reqStamp })
     update({ phase: "no-python", wantVersion: config.python })
     return { status: "no-python", missing: [] }
   }
@@ -1161,7 +1194,7 @@ async function ensureDeps(repoRoot) {
   update({ pythonPath: python.executable })
 
   // ---- 2/7 统计依赖闭包（本地，不联网） ------------------------------------
-  stepHead(2, `统计依赖闭包（${config.requirements}）`)
+  stepHead(2, `统计依赖闭包（内置清单 ${CONFIG.requirements.length} 条）`)
   const tree = await collectDepTree(repoRoot, python, reqFile)
   if (tree) {
     update({
@@ -1178,7 +1211,7 @@ async function ensureDeps(repoRoot) {
 
   // ---- 3/7 来源地址 --------------------------------------------------------
   stepHead(3, "读取依赖来源地址")
-  stepInfo(`✓ ${config.indexUrl}（来自 ${config.origin}）`)
+  stepInfo(`✓ ${config.indexUrl}（来自${config.origin}）`)
 
   // 缓存命中：同一解释器 + 同一来源 + 清单没改过 + 24h 内验证过。
   // 提示里必须写清"多久前验的、本次没重跑"，否则会被误读成"刚检查过"。
@@ -1186,7 +1219,7 @@ async function ensureDeps(repoRoot) {
     !force &&
     cached?.status === "ok" &&
     cached.python === python.executable &&
-    cached.requirementsMtimeMs === reqMtime &&
+    cached.requirementsStamp === reqStamp &&
     cached.indexUrl === config.indexUrl &&
     now - (cached.checkedAt || 0) < CACHE_TTL_MS
   if (cacheHit) {
@@ -1215,7 +1248,7 @@ async function ensureDeps(repoRoot) {
   if (!(await pipSupportsDryRun(python))) {
     stepInfo("✗ 目标环境的 pip 不支持 --dry-run（需 >= 22.2）")
     warn("  先升级 pip：python -m pip install -U pip")
-    writeState(repoRoot, { status: "no-pip", checkedAt: now, requirementsMtimeMs: reqMtime })
+    writeState(repoRoot, { status: "no-pip", checkedAt: now, requirementsStamp: reqStamp })
     update({ phase: "no-pip" })
     return { status: "no-pip", missing: [] }
   }
@@ -1227,12 +1260,12 @@ async function ensureDeps(repoRoot) {
       python: python.executable,
       version: python.version,
       indexUrl: config.indexUrl,
-      requirementsMtimeMs: reqMtime,
+      requirementsStamp: reqStamp,
       checkedAt: now,
     })
     stepInfo(`✓ ${counts()} 全部满足，无需下载`)
     warn(`✓ 依赖已在位（${counts()}，全部满足 · CPython ${python.version}，无需下载）`)
-    warn(`  来源 ${config.indexUrl}（来自 ${config.origin}，本次未下载）`)
+    warn(`  来源 ${config.indexUrl}（来自${config.origin}，本次未下载）`)
     warn(`  解释器 ${python.executable}`)
     update({ phase: "ok", version: python.version, note: "", installedNow: false })
     return { status: "ok", missing: [] }
@@ -1261,7 +1294,7 @@ async function ensureDeps(repoRoot) {
       python: python.executable,
       version: python.version,
       indexUrl: config.indexUrl,
-      requirementsMtimeMs: reqMtime,
+      requirementsStamp: reqStamp,
       checkedAt: now,
       detail,
     })
@@ -1287,7 +1320,7 @@ async function ensureDeps(repoRoot) {
       python: python.executable,
       version: python.version,
       indexUrl: config.indexUrl,
-      requirementsMtimeMs: reqMtime,
+      requirementsStamp: reqStamp,
       checkedAt: now,
       detail: install.detail,
     })
@@ -1310,20 +1343,20 @@ async function ensureDeps(repoRoot) {
   if (!second.ok) {
     const detail = `下载完成但复检仍不满足：${second.missing.join(", ") || second.detail}`
     stepInfo(`✗ ${detail}`)
-    warn("  说明内网 server 上的包版本与 requirements.txt 不一致，或传递依赖被裁掉了")
+    warn("  说明内网 server 上的包版本与内置清单不一致，或传递依赖被裁掉了")
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,
       version: python.version,
       indexUrl: config.indexUrl,
-      requirementsMtimeMs: reqMtime,
+      requirementsStamp: reqStamp,
       checkedAt: now,
       detail: second.detail,
     })
     update({
       phase: "failed",
       detail,
-      hint: "核对内网 server 上的包版本与 requirements.txt 是否一致",
+      hint: "核对内网 server 上的包版本与本文件 CONFIG.requirements 是否一致",
     })
     return { status: "failed", missing: second.missing }
   }
@@ -1346,7 +1379,7 @@ async function ensureDeps(repoRoot) {
     python: python.executable,
     version: python.version,
     indexUrl: config.indexUrl,
-    requirementsMtimeMs: reqMtime,
+    requirementsStamp: reqStamp,
     checkedAt: now,
   })
   const totalSeconds = Math.round((Date.now() - startedAt) / 1000)
@@ -1371,21 +1404,17 @@ async function bootstrap() {
   }
   const repoRoot = findRepoRoot(process.cwd())
   if (!repoRoot) {
-    // cwd 不在仓库内是最隐蔽的失败：依赖清单找不到 → 不检查 → 首页一片干净，
+    // cwd 不在项目内是隐蔽的失败：什么都不做 → 首页一片干净，
     // 和"扩展没加载"完全同徵。所以把 cwd 一起报出来，让原因当场可见。
-    warn(`当前目录不在仓库根（向上 3 层没找到 requirements.txt / .pi/deps.json），跳过依赖检查`)
+    warn(`当前目录不在项目内（向上 3 层没找到 .pi 目录），跳过依赖检查`)
     warn(`  cwd = ${process.cwd()}`)
-    warn("  从仓库根目录启动 pi，或把 pi 的工作目录切到仓库根")
-    update({ phase: "skipped", note: `cwd 不在仓库根：${process.cwd()}` })
+    warn("  从项目根目录启动 pi，或把 pi 的工作目录切到项目根")
+    update({ phase: "skipped", note: `cwd 不在项目内：${process.cwd()}` })
     return { status: "skipped", missing: [] }
   }
-  const config = readConfig(repoRoot)
-  const reqFile = reqFileOf(repoRoot, config)
-  if (!fs.existsSync(reqFile)) {
-    warn(`${reqFile} 不存在，跳过（没有依赖清单就不该管）`)
-    update({ phase: "skipped", note: `依赖清单不存在：${reqFile}` })
-    return { status: "skipped", missing: [] }
-  }
+  const config = readConfig()
+  // 清单内联，不存在"清单文件缺失"这种分支；ensureReqFile 只负责把清单落成临时文件。
+  ensureReqFile(repoRoot)
   gateEnabled = config.gate
   return ensureDeps(repoRoot)
 }
@@ -1508,7 +1537,7 @@ export default function depsBootstrap(pi) {
 if (process.env.PI_DEPS_VERIFY === "1") {
   const repoRoot = findRepoRoot(process.cwd())
   if (!repoRoot) {
-    warn("! 当前目录及上 3 层没有 requirements.txt，无需预检")
+    warn("! 当前目录及上 3 层没有 .pi 目录，不在项目内，无需预检")
     process.exit(0)
   }
   verifyAgainstServer(repoRoot).then((result) => process.exit(result.status === "ok" ? 0 : 1))
