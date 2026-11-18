@@ -55,27 +55,35 @@
 
 | 时机 | 入口 | 行为 |
 |---|---|---|
-| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定 → 缺则**先 `--no-index --find-links .pi/wheels/py3XY` 离线装**，装不上再回退镜像 / PyPI（pip 输出**直通终端**，逐包进度实时可见）→ 结果缓存 24h；**每次启动必打一行状态**，不吃静默 |
-| 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走镜像 |
+| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定（纯本地，不联网）→ 缺则**从内网 server（`indexUrl`）`--prefer-binary` 安装，pip 输出逐块实时转发**，失败给人话原因 → 结果缓存 24h；**每次启动必打状态行**，不吃静默 |
+| 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走内网镜像 |
 | 换机 / 补包 | `.pi/wheels/README.md` | `pip download` 到对应版本子目录 |
 
-> **离线部署唯一真正的坑：`.gitignore` 排除了 `.pi/wheels/*`（只留 README.md）。**
-> 所以离线机若用 `git clone` 取代码，`.pi/wheels/py312/` 是**空目录**，自举的离线分支拿不到包、
-> 网络分支又连不上，只能失败——然后 pi 照常启动，直到生成 PPT 时 `import matplotlib` 才炸，
-> 报错点完全指错了地方。**跨机部署必须把 `.pi/wheels` 整个目录拷过去**（U 盘 / 共享盘 / 压缩包），
-> 或先在离线机跑一遍 `setup.bat`。自举失败时现在会直接把这句话打出来。
+> **依赖只有一条安装通路：内网 server（`.pi/deps.json` 的 `indexUrl`）。**
+> 自举**不回退公网 PyPI、也不读 `.pi/wheels` 本地目录**——离线机连不上公网，回退只会白等；
+> 本地包是另一条要维护的路径，已从自举里删除。`indexUrl` 没配就直接报错，绝不偷偷走公网。
+>
+> **开发机到不了那个内网 IP，这是正常状态**：源码在这边写、拷到离线 PC 上跑，只有那台机器能连通
+> server。所以别在开发机上试连 `172.30.39.34`（只会白等超时），也别指望开发机能验证下载路径——
+> 下载链路的验证只能在离线 PC 上做。开发机上能验证的只有：检查分支（`--no-index`，纯本地）、
+> 未配置地址的报错、以及失败原因分类（用回环地址 `127.0.0.1:9` 造连接拒绝）。
 
 **启动时终端会看到的七种行**（都在 stderr，前缀 `[deps]`）：
 
 ```
+检查依赖是否就位（本地比对，不联网，约 10 秒）...                   ← 非缓存命中时先报这句
 ✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；本次跳过重复检查）   ← 24h 缓存命中，没重跑
 ✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10，无需下载）    ← 真跑过 pip 检查
-依赖未就位（缺 3/7：numpy, pillow, ...），先用本地离线包 .pi/wheels/py312 安装 ...  ← 离线优先
-本地离线包不完整（退出码 1），回退网络索引 ...                    ← 最后一句是 "从 <源> 安装"
-✓ 依赖安装完成（耗时 42s，复检通过 · <解释器路径>）
-✗ 依赖安装失败：pip install 退出码 1（耗时 4s） + 手动修复命令 + 离线机提示
+依赖未就位（缺 3/7：numpy, pillow, ...），开始从内网 server 下载：<url>
+pip 实时输出如下（下载进度即时刷新）...                           ← 后面是 pip 的逐包下载输出
+✓ 依赖安装完成（耗时 42s，复检通过 · CPython 3.12.10） + 本次装入：a-1.0 b-2.0 …
+✗ 依赖安装失败：内网 server 拒绝连接（172.30.39.34:8765）：这台机器到该 IP/端口不通…
 ! 未找到 CPython 3.12 解释器，本次跳过依赖检查，依赖不会被安装   ← 每次都打，不吃缓存
 ```
+
+失败原因是 pip 原始报错翻成的人话，分类顺序是"先判没连上、再判连上了没这个包"——
+两种情形 pip 都会吐 `No matching distribution found`，顺序反了就会把断网误报成缺包。
+覆盖：拒绝连接 / 超时 / 主机名解析失败 / server 上没这个包 / 证书 / 无写权限 / 磁盘满 / 未配地址。
 
 缓存命中那行故意写明"多久前验证过"，是为了不让人误读成"刚才查过"——真检查一次要 11 秒
 （`pip --dry-run --no-index` 实测），每次启动都跑不可接受。要立刻真查：`PI_DEPS_FORCE=1 pi`。
@@ -85,7 +93,7 @@
 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护，
 `numpy==2.4.6` 是否真装对也由 pip 权威实现负责。**这个脚本与具体项目无关**：
 任何有 `requirements.txt` 的 pi 项目丢进 `.pi/extensions/` 即可用（含 `~/.pi/agent/extensions/`
-全局生效），零配置默认走公网 PyPI。
+全局生效）。`.pi/deps.json` 的 `indexUrl` 不配就**直接报错**，不拿公网 PyPI 兜底。
 
 **本项目靠 `.pi/deps.json` 落地两个私有约束**：
 
@@ -93,11 +101,11 @@
 { "python": "3.12", "indexUrl": "http://172.30.39.34:8765/simple" }
 ```
 
-- `python: "3.12"` → 只认 3.12 解释器，找不到就跳过（本机 3.14 启动不受打扰，
-  同一提示 24h 只说一次）；不配则用 PATH 上的 python，不看版本。
-- `indexUrl` → 内网镜像，pip 标准索引路径 `/simple`（不是 `/simples`）。脚本会自动补
-  `--trusted-host`（http 源不带会被 pip 直接拒绝）；不配则走官方 PyPI。
-- 安装失败**不阻塞 pi 启动**，只打警告 + 给出手动修复命令——起不来的 pi 没法排查问题。
+- `python: "3.12"` → 只认 3.12 解释器，找不到就跳过并每次提示（不吃缓存）；不配则用
+  PATH 上的 python，不看版本。
+- `indexUrl` → 内网镜像，**装包唯一来源**，pip 标准索引路径 `/simple`（不是 `/simples`）。
+  脚本会自动补 `--trusted-host`（http 源不带会被 pip 直接拒绝）；不配则直接报错，**不走公网**。
+- 安装失败**不阻塞 pi 启动**，只打警告 + 人话原因 + 手动重试命令——起不来的 pi 没法排查问题。
 - 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、`PI_DEPS_FORCE=1` 忽略 24h 缓存强制重查、
   `PI_PIP_INDEX_URL` / `PI_DEPS_PY_VERSION` / `PI_DEPS_TIMEOUT_MIN` 覆盖 deps.json。
 - 仓库根只向上找 3 层就停：再往上是父目录的别的项目，会把依赖装错地方。

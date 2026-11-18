@@ -1,24 +1,34 @@
 // @ts-nocheck
 /**
- * 依赖自举（deps bootstrap）—— 通用版
+ * 依赖自举（deps bootstrap）—— 内网镜像单源版
  *
  * 时机：pi 加载扩展时执行本文件，**在 session_start / 资源发现 / provider 注册之前**。
  *       pi 文档：工厂函数返回 Promise 时，pi 会 await 它再继续启动
  *       （docs/extensions.md「Writing an Extension」）。所以这里做成 async 工厂。
  *
+ * 唯一安装来源：**内网 server**（`.pi/deps.json` 的 `indexUrl`）。
+ *   - 不回退公网 PyPI：离线机连不上，回退只会白等；配错了也不该被兜底掩盖。
+ *   - 不使用 `.pi/wheels` 本地目录：依赖全部由内网 server 供应，本地包是另一条要维护的路径。
+ *   - 没配 `indexUrl` 就**直接报错**，不猜地址、不偷偷走公网。
+ *   - 开发机到不了内网 IP，所以本脚本不做任何"先探测一下能不能连"的试探，直接按配置下。
+ *
  * 判据：不猜 import 名、不自己比版本，直接让 pip 判断——
- *       `pip install --dry-run --no-index -r requirements.txt`
+ *       `pip install --dry-run --no-index -r requirements.txt`（纯本地比对，不联网）
  *       退出码 0 = 全部满足（含版本约束）；非 0 = 缺包或版本不符。
- *       这样 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护，
- *       `numpy==2.4.6` 的版本约束也由 pip 权威实现负责。
+ *       这样 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护。
  *
- * 复用：把本文件放进任意 pi 项目的 `.pi/extensions/`（或 `~/.pi/agent/extensions/`
- *       对所有项目生效），该目录只要有 requirements.txt 即可工作，零配置默认走公网 PyPI。
+ * 终端反馈（每次启动都有，不让用户猜）：
+ *   检查        `检查依赖是否就位（本地比对，不联网，约 10 秒）...`
+ *   已就位      `✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10，无需下载）`
+ *   缓存命中    `✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；本次跳过重复检查）`
+ *   下载中      `依赖未就位（缺 3/7：...），开始从内网 server 下载：<url>` + pip 逐块实时输出
+ *   完成        `✓ 依赖安装完成（耗时 42s，复检通过 · CPython 3.12.10）` + `本次装入：a-1.0 b-2.0 …`
+ *   失败        `✗ 依赖安装失败：<人话原因>` + 手动重试命令
  *
- * 配置：`<仓库根>/.pi/deps.json`（可选，全部字段可选）
+ * 配置：`<仓库根>/.pi/deps.json`（全部字段可选）
  *   {
  *     "python": "3.12",                              // 限定解释器版本；不填=用 PATH 上的 python
- *     "indexUrl": "http://172.30.39.34:8765/simple",  // 私有源；不填=官方 PyPI
+ *     "indexUrl": "http://172.30.39.34:8765/simple",  // **内网 server，装包唯一来源**
  *     "timeoutMinutes": 15                            // 安装超时，默认 15
  *   }
  *
@@ -27,28 +37,20 @@
  *   PI_PIP_INDEX_URL     同 indexUrl
  *   PI_DEPS_TIMEOUT_MIN  同 timeoutMinutes
  *   PI_DEPS_SKIP=1       完全跳过（应急）
- *   PI_DEPS_FORCE=1      忽略 24h 缓存，强制真跑一次 pip 检查
+ *   PI_DEPS_FORCE=1      忽略 24h 缓存，强制真跑一次检查
  *   PI_DEPS_VERBOSE=1    打印判定过程
  *   PI_DEPS_CLI=1        命令行模式（检查/安装后退出，不挂到 pi 上）
  *
- * 终端反馈口径（每次启动**必定**输出一行，不让用户猜）：
- *   依赖已在位（缓存命中）  `[deps] ✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；跳过重复检查）`
- *   依赖已在位（真检查）    `[deps] ✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10）`
- *   需要安装                `[deps] 依赖未就位（3/7 缺失），开始安装，pip 实时输出如下 ...` + 每包进度
- *   安装完成                `[deps] ✓ 依赖安装完成（耗时 42s，复检通过）`
- *   装不上                  `[deps] ✗ 依赖安装失败：...` + 手动修复命令
- *   没有解释器              `[deps] ! 未找到 CPython 3.12 解释器，跳过检查 ...`（**每次都说**，不吃缓存）
- *
- * 缓存为什么必须留：`pip install --dry-run --no-index` 实测 11 秒，每次启动都跑等于每次多等 11 秒；
+ * 缓存为什么留：`pip install --dry-run --no-index` 实测 11 秒，每次启动都跑等于每次多等 11 秒；
  * 但缓存命中时提示里必须写清"X 前已验证、本次跳过"，不能让人误以为刚查过。
- * 想立刻真查一次：`PI_DEPS_FORCE=1 pi`。
+ * 要立刻真查一次：`PI_DEPS_FORCE=1 pi`。
  *
  * 刻意不做的事：
- *   - 安装失败**不让 pi 崩溃**。起不来的 pi 没法排查问题，改成打醒目警告后放行。
- *   - 不 block 版本不符的解释器。配了 `python` 却找不到该版本时安静跳过。
+ *   - 安装失败**不让 pi 崩溃**。起不来的 pi 没法排查问题，改成打醒目警告 + 人话原因后放行。
+ *   - 不 block 版本不符的解释器。配了 `python` 却找不到该版本时跳过并提示。
  */
 
-import { spawnSync } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 
@@ -112,6 +114,51 @@ function run(cmd, args, opts = {}) {
     timeout: opts.timeout || 30000,
     windowsHide: true,
     ...opts,
+  })
+}
+
+/**
+ * 流式执行：边跑边把子进程输出转发到 stderr，同时累积全文供事后解析。
+ * 为什么不用 spawnSync + stdio:inherit——那样拿不到任何文本，"失败原因"就只能报退出码。
+ * 用 pipe 手动转发，实时性和可解析性同时拿到。
+ */
+function runStreaming(cmd, args, { cwd, timeoutMs }) {
+  return new Promise((resolve) => {
+    let child
+    try {
+      child = spawn(cmd, args, { cwd, windowsHide: true })
+    } catch (err) {
+      resolve({ code: -1, output: "", error: err, timedOut: false })
+      return
+    }
+
+    let output = ""
+    let timedOut = false
+    let settled = false
+    const timer = setTimeout(() => {
+      timedOut = true
+      try {
+        child.kill("SIGKILL")
+      } catch {
+        /* 已经退出 */
+      }
+    }, timeoutMs)
+    const finish = (payload) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(payload)
+    }
+
+    const forward = (chunk) => {
+      const text = chunk.toString("utf8")
+      output += text
+      process.stderr.write(text)
+    }
+    child.stdout?.on("data", forward)
+    child.stderr?.on("data", forward)
+    child.on("error", (err) => finish({ code: -1, output, error: err, timedOut }))
+    child.on("close", (code) => finish({ code, output, error: null, timedOut }))
   })
 }
 
@@ -243,90 +290,155 @@ function checkDeps(repoRoot, python) {
 }
 
 /**
- * 本地离线 wheels 目录：`.pi/wheels/py312` 这种按 minor 版本分。
- * pip 的 --find-links 不递归，所以必须精确到叶子目录，给 `.pi/wheels` 找不到任何包。
- * 返回目录路径或 null（目录不存在 / 里面没有 .whl / 拿不到解释器版本）。
+ * 把 pip 的原始报错翻成一句能照着修的人话。
+ * 顺序有意义：先判"根本没连上"，再判"连上了但没这个包"——两者 pip 都可能吐
+ * "No matching distribution found"，先判网络才不会把断网误报成缺包。
  */
-function offlineWheelsDir(repoRoot, python) {
-  const [major, minor] = String(python.version || "").split(".")
-  if (!major || !minor) return null
-  const dir = path.join(repoRoot, ".pi", "wheels", `py${major}${minor}`)
+function explainFailure(output, indexUrl) {
+  const text = String(output || "")
+  let host = indexUrl || "未配置"
   try {
-    return fs.readdirSync(dir).some((f) => f.endsWith(".whl")) ? dir : null
+    host = new URL(indexUrl).host || indexUrl
   } catch {
-    return null
+    /* 保留原串 */
   }
+
+  if (/WinError 10061|Connection refused|NewConnectionError|Failed to establish a new connection/i.test(text)) {
+    return `内网 server 拒绝连接（${host}）：这台机器到该 IP/端口不通，或 server 服务未启动`
+  }
+  if (/WinError 10060|WinError 10065|timed out|TimeoutError|ReadTimeoutError/i.test(text)) {
+    return `连接内网 server 超时（${host}）：网络不通、防火墙拦截，或服务响应过慢`
+  }
+  if (/WinError 11001|WinError 11002|Name or service not known|getaddrinfo failed|nodename nor servname/i.test(text)) {
+    return `内网 server 主机名解析失败（${host}）：indexUrl 里应写 IP，别写主机名`
+  }
+  if (/No matching distribution found for ([^\s(]+)/i.test(text)) {
+    const m = text.match(/No matching distribution found for ([^\s(]+)/i)
+    return `内网 server 上没有 ${m ? m[1] : "所需版本"}：该包未同步到镜像，或镜像里的版本与 requirements.txt 不一致`
+  }
+  if (/SSLError|certificate verify failed/i.test(text)) {
+    return "证书校验失败：http 源已自动加 --trusted-host；https 自签名证书需要把 CA 装进系统信任区"
+  }
+  if (/WinError 5|Access is denied|Permission denied|Errno 13/i.test(text)) {
+    return "没有写入权限：Python 装在受保护目录，用管理员身份重开终端再启动 pi"
+  }
+  if (/No space left|WinError 112/i.test(text)) {
+    return "磁盘空间不足，清理后重试"
+  }
+
+  const tail = text
+    .trim()
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .slice(-3)
+    .join(" | ")
+  return tail ? `pip 报错（未归类）：${tail}` : "pip 没有输出可读原因（可能被强杀或超时）"
 }
 
-function installDeps(repoRoot, python, config, missing, reqCount) {
-  const common = [
+/** 从 pip 输出里捞 "Successfully installed a-1.0 b-2.0" 那一行，供完成后呈现。 */
+function summarizeInstalled(output) {
+  const m = String(output || "").match(/Successfully installed ([^\r\n]+)/i)
+  if (!m) return null
+  const pkgs = m[1].trim().split(/\s+/).filter(Boolean)
+  if (!pkgs.length) return null
+  if (pkgs.length <= 8) return pkgs.join("  ")
+  return `${pkgs.slice(0, 8).join("  ")}  …等 ${pkgs.length} 个`
+}
+
+/**
+ * 从内网 server 安装。强制单源：没配 indexUrl 直接失败，不偷偷走公网。
+ * --prefer-binary：离线机通常没有编译链，优先拿 wheel，别现场编译 sdist。
+ * --progress-bar on：输出不是 tty 时 pip 默认关进度条，强制打开才能看到刷新。
+ */
+async function installDeps(repoRoot, python, config, missing, reqCount) {
+  const startedAt = Date.now()
+  const elapsed = () => Math.round((Date.now() - startedAt) / 1000)
+  const lacks = missing.length
+    ? `缺 ${missing.length}/${reqCount || "?"}：${missing.slice(0, 6).join(", ")}`
+    : "版本不满足"
+
+  if (!config.indexUrl) {
+    return {
+      ok: false,
+      elapsed: 0,
+      output: "",
+      installed: null,
+      detail: "未配置内网 server 地址，拒绝走公网 PyPI",
+      hint: `在 ${CONFIG_FILE} 里写 {"indexUrl": "http://<内网IP>:<端口>/simple"}`,
+    }
+  }
+
+  const args = [
     ...python.args,
     "-m",
     "pip",
     "install",
     "--disable-pip-version-check",
     "--no-input",
+    "--prefer-binary",
+    "--progress-bar",
+    "on",
     "--timeout",
     "30",
     "--retries",
     "2",
+    "--index-url",
+    config.indexUrl,
   ]
-  const reqFile = path.join(repoRoot, "requirements.txt")
-  const timeout = config.timeoutMinutes * 60 * 1000
-  const lacks = missing.length
-    ? `缺 ${missing.length}/${reqCount || "?"}：${missing.slice(0, 6).join(", ")}`
-    : "版本不满足"
-  const startedAt = Date.now()
-  const elapsed = () => Math.round((Date.now() - startedAt) / 1000)
-
-  // ① 先试本地 wheels：--no-index 保证一个包都不从网络取，断网也能装完。
-  //    这是离线部署的主路径，顺序不能反——先连网会白等 timeout*retries。
-  const wheels = offlineWheelsDir(repoRoot, python)
-  if (wheels) {
-    const rel = path.relative(repoRoot, wheels).replace(/\\/g, "/")
-    warn(`依赖未就位（${lacks}），先用本地离线包 ${rel} 安装，pip 实时输出如下 ...`)
-    const local = spawnSync(
-      python.cmd,
-      [...common, "--no-index", "--find-links", wheels, "-r", reqFile],
-      { cwd: repoRoot, stdio: ["ignore", "inherit", "inherit"], timeout, windowsHide: true },
-    )
-    if (local.status === 0) return { ok: true, elapsed: elapsed(), detail: "" }
-    if (local.error?.code === "ETIMEDOUT") {
-      return { ok: false, elapsed: elapsed(), detail: `离线安装超过 ${config.timeoutMinutes} 分钟未完成` }
-    }
-    warn(`本地离线包不完整（退出码 ${local.status}），回退网络索引 ...`)
+  try {
+    const host = new URL(config.indexUrl).hostname
+    if (host) args.push("--trusted-host", host)
+  } catch {
+    /* 非法 URL 交给 pip 自己报错 */
   }
+  args.push("-r", path.join(repoRoot, "requirements.txt"))
 
-  // ② 回退网络：私有镜像优先，没配则公网 PyPI
-  const args = [...common]
-  if (config.indexUrl) {
-    args.push("--index-url", config.indexUrl)
-    try {
-      const host = new URL(config.indexUrl).hostname
-      if (host) args.push("--trusted-host", host)
-    } catch {
-      /* 非法 URL 交给 pip 自己报错 */
-    }
-  }
-  args.push("-r", reqFile)
-
-  const source = config.indexUrl || "默认索引 (PyPI)"
-  warn(`从 ${source} 安装，pip 实时输出如下 ...`)
-  const result = spawnSync(python.cmd, args, {
+  warn(`依赖未就位（${lacks}），开始从内网 server 下载：${config.indexUrl}`)
+  warn(`pip 实时输出如下（下载进度即时刷新）...`)
+  const result = await runStreaming(python.cmd, args, {
     cwd: repoRoot,
-    // inherit = pip 的下载进度直接落到当前终端，不攒到最后一次性吐出
-    stdio: ["ignore", "inherit", "inherit"],
-    timeout,
-    windowsHide: true,
+    timeoutMs: config.timeoutMinutes * 60 * 1000,
   })
 
-  if (result.error?.code === "ETIMEDOUT") {
-    return { ok: false, elapsed: elapsed(), detail: `pip install 超过 ${config.timeoutMinutes} 分钟未完成` }
+  if (result.timedOut) {
+    return {
+      ok: false,
+      elapsed: elapsed(),
+      output: result.output,
+      installed: null,
+      detail: `下载超过 ${config.timeoutMinutes} 分钟未完成（内网 server 太慢或卡住）`,
+      hint: "加大超时：设 PI_DEPS_TIMEOUT_MIN=30 后重启 pi",
+    }
   }
-  if (result.status !== 0) {
-    return { ok: false, elapsed: elapsed(), detail: `pip install 退出码 ${result.status}（耗时 ${elapsed()}s）` }
+  if (result.error) {
+    return {
+      ok: false,
+      elapsed: elapsed(),
+      output: result.output,
+      installed: null,
+      detail: `pip 无法启动：${result.error.message}`,
+      hint: `手动重试：${python.executable} -m pip install -r requirements.txt`,
+    }
   }
-  return { ok: true, elapsed: elapsed(), detail: "" }
+  if (result.code !== 0) {
+    return {
+      ok: false,
+      elapsed: elapsed(),
+      output: result.output,
+      installed: null,
+      detail: explainFailure(result.output, config.indexUrl),
+      hint: `手动重试：${python.executable} -m pip install --index-url ${config.indexUrl} -r requirements.txt`,
+    }
+  }
+
+  return {
+    ok: true,
+    elapsed: elapsed(),
+    output: result.output,
+    installed: summarizeInstalled(result.output),
+    detail: "",
+    hint: "",
+  }
 }
 
 /**
@@ -337,7 +449,7 @@ function installDeps(repoRoot, python, config, missing, reqCount) {
  *   no-pip    pip 太老，无法检查，跳过
  *   failed    安装或验证失败
  */
-function ensureDeps(repoRoot) {
+async function ensureDeps(repoRoot) {
   const config = readConfig(repoRoot)
   const reqMtime = requirementsMtime(repoRoot)
   const reqCount = countRequirements(repoRoot)
@@ -363,11 +475,6 @@ function ensureDeps(repoRoot) {
     cached.python === python.executable &&
     cached.requirementsMtimeMs === reqMtime &&
     now - (cached.checkedAt || 0) < CACHE_TTL_MS
-  if (process.env.PI_DEPS_VERBOSE) {
-    verbose(
-      `缓存比较: status=${cached?.status} python=${cached?.python} → ${python.executable} mtime=${cached?.requirementsMtimeMs} → ${reqMtime} force=${force}`,
-    )
-  }
   if (cacheHit) {
     verbose("缓存命中，跳过检查")
     const age = formatAge(now - (cached.checkedAt || 0))
@@ -383,7 +490,7 @@ function ensureDeps(repoRoot) {
     return { status: "no-pip", missing: [] }
   }
 
-  verbose(`检查 ${path.join(repoRoot, "requirements.txt")}`)
+  warn("检查依赖是否就位（本地比对，不联网，约 10 秒）...")
   const first = checkDeps(repoRoot, python)
   if (first.ok) {
     writeState(repoRoot, {
@@ -398,15 +505,10 @@ function ensureDeps(repoRoot) {
   }
 
   verbose(`未满足: ${first.missing.join(", ") || first.detail}`)
-  const install = installDeps(repoRoot, python, config, first.missing, reqCount)
+  const install = await installDeps(repoRoot, python, config, first.missing, reqCount)
   if (!install.ok) {
     warn(`✗ 依赖安装失败：${install.detail}`)
-    warn(`  手动修复：${python.executable} -m pip install -r requirements.txt`)
-    if (!offlineWheelsDir(repoRoot, python)) {
-      // 离线机的常见死因：wheel 被 .gitignore 排除，git clone 下来是空目录，pip 又连不上网
-      warn(`  离线机注意：.pi/wheels/py${python.version.replace(".", "")} 下没有 wheel，`)
-      warn(`  git 不跟踪 wheel 文件——需把开发机的 .pi/wheels 整个目录拷过来，或先跑 setup.bat`)
-    }
+    if (install.hint) warn(`  ${install.hint}`)
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,
@@ -420,7 +522,8 @@ function ensureDeps(repoRoot) {
 
   const second = checkDeps(repoRoot, python)
   if (!second.ok) {
-    warn(`✗ 安装完成但复检仍不满足：${second.missing.join(", ") || second.detail}`)
+    warn(`✗ 下载完成但复检仍不满足：${second.missing.join(", ") || second.detail}`)
+    warn("  说明内网 server 上的包版本与 requirements.txt 不一致，或传递依赖被裁掉了")
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,
@@ -439,11 +542,12 @@ function ensureDeps(repoRoot) {
     requirementsMtimeMs: reqMtime,
     checkedAt: now,
   })
-  warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，复检通过 · ${python.executable}）`)
+  warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，复检通过 · CPython ${python.version}）`)
+  if (install.installed) warn(`  本次装入：${install.installed}`)
   return { status: "installed", missing: [] }
 }
 
-function bootstrap() {
+async function bootstrap() {
   if (process.env.PI_DEPS_SKIP === "1") {
     verbose("PI_DEPS_SKIP=1，跳过")
     return { status: "skipped", missing: [] }
@@ -461,7 +565,7 @@ function bootstrap() {
 // ---------------------------------------------------------------------------
 export default async function depsBootstrap(_pi) {
   try {
-    bootstrap()
+    await bootstrap()
   } catch (err) {
     // 自举本身出错绝不能拦住 pi 启动
     warn(`自举异常（已忽略）：${err?.message || err}`)
@@ -473,12 +577,13 @@ export default async function depsBootstrap(_pi) {
 // 用于人工排查与 setup.bat 调用
 // ---------------------------------------------------------------------------
 if (process.env.PI_DEPS_CLI === "1") {
-  const result = bootstrap()
-  if (result.status === "failed") {
-    if (result.missing.length) warn(`缺失/不满足: ${result.missing.join(", ")}`)
-    process.exit(1)
-  }
-  if (result.status === "no-python" || result.status === "no-pip") process.exit(2)
-  process.stderr.write(`[deps] ${result.status}\n`)
-  process.exit(0)
+  bootstrap().then((result) => {
+    if (result.status === "failed") {
+      if (result.missing.length) warn(`缺失/不满足: ${result.missing.join(", ")}`)
+      process.exit(1)
+    }
+    if (result.status === "no-python" || result.status === "no-pip") process.exit(2)
+    process.stderr.write(`[deps] ${result.status}\n`)
+    process.exit(0)
+  })
 }
