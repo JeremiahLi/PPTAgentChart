@@ -47,12 +47,24 @@
  *   PI_DEPS_VERIFY=1     预检模式：只向 server 查询能否取全，不安装、不写状态，退出码 0/1
  *   PI_DEPS_VERBOSE=1    打印判定过程
  *   PI_DEPS_CLI=1        命令行模式（检查/安装后退出，不挂到 pi 上）
+ *   PI_DEPS_GATE=0       依赖未就位时不拦用户指令（默认拦）
+ *
+ * 这个脚本是**通用的**，不绑定本项目：任何有 requirements.txt 的 pi 项目把它丢进
+ * `.pi/extensions/` 就能用（放 `~/.pi/agent/extensions/` 则全局生效）。
+ * 内网 server 地址内置成默认值（DEFAULT_INDEX_URL），**零配置即可工作**；
+ * 换环境时用 `.pi/deps.json` 或 `PI_PIP_INDEX_URL` 覆盖，不用改代码。
+ * 依赖判定完全交给 pip，所以 `Pillow→PIL`、`python-pptx→pptx` 这类映射一概不用维护。
  *
  * 两套输出通道，两条都要留着：
  *   1) TUI widget（首页可见）—— `session_start` + `ctx.ui.setWidget("deps-status", ..., belowEditor)`。
  *      **这个是给用户看的**。pi 进 interactive 模式会切 alternate screen 重绘，stderr 全被盖掉；
  *      2026-11-18 就是因此首页一片干净，用户压根不知道依赖检没检查。
  *   2) stderr `[deps] ...` —— CLI 模式、print 模式、日志重定向、人工排查用。
+ *
+ * 日志按**步骤**走，每一步都说清"在做什么、结果如何"（序号 1-7）：
+ *   1) 定位解释器     2) 统计依赖闭包   3) 读来源地址     4) 探测 server 连通性
+ *   5) 本地比对       6) 下载安装       7) 复检
+ * 依赖缺了才知道去看日志就太晚了，所以每一步都尽量给出"通/不通/通到哪一层"。
  *
  * 缓存为什么留：`pip install --dry-run --no-index` 实测 11 秒，每次启动都跑等于每次多等 11 秒；
  * 但缓存命中时提示里必须写清"X 前已验证、本次跳过"，不能让人误以为刚查过。
@@ -61,9 +73,14 @@
  * 刻意不做的事：
  *   - 安装失败**不让 pi 崩溃**。起不来的 pi 没法排查问题，改成打醒目警告 + 人话原因后放行。
  *   - 不 block 版本不符的解释器。配了 `python` 却找不到该版本时跳过并提示。
+ *   - 探测不到 server 时不假装自己能连：TCP 明确拒绝/DNS 解析失败就直接给结论，
+ *     不白等 pip 的 30s 超时 × 2 次重试；只有超时这种"可能被防火墙拖住"的情况才继续试 pip。
  */
 
 import { spawn, spawnSync } from "node:child_process"
+import net from "node:net"
+import http from "node:http"
+import https from "node:https"
 import fs from "node:fs"
 import path from "node:path"
 
@@ -71,6 +88,14 @@ const CONFIG_FILE = ".pi/deps.json"
 const STATE_FILE = ".pi/work/.deps-state.json"
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const CHECK_TIMEOUT_MS = 180 * 1000
+const PROBE_TIMEOUT_MS = 5000
+
+/**
+ * 内网 server 地址：**内置默认值**，让脚本零配置可用。
+ * 换机器/换项目时不要去改这里，用 `.pi/deps.json` 的 indexUrl 或 PI_PIP_INDEX_URL 覆盖。
+ * 改代码的后果是：拷贝给别人时把别人的地址也一起改了。
+ */
+const DEFAULT_INDEX_URL = "http://172.30.39.34:8765/simple"
 
 function verbose(msg) {
   if (process.env.PI_DEPS_VERBOSE) process.stderr.write(`[deps] ${msg}\n`)
@@ -99,6 +124,13 @@ const snapshot = {
   missing: [],
   version: null,
   wantVersion: null,
+  pythonPath: "", // 实际用的解释器，回答"这套依赖装在哪个 Python 里"
+  source: "", // 依赖来源地址（内网 server），回答"从哪拿的"
+  step: 0, // 当前步骤号（1-7）
+  stepLabel: "", // 当前步骤在做什么
+  stepDetail: "", // 当前步骤的结果（可达/不可达/缺几个…）
+  installedNow: false, // 本次是否真的下载安装了（区分"本来就有"和"刚装好"）
+  cachedAt: 0, // 缓存命中时，上次验证的时间戳
   detail: "",
   hint: "",
   note: "",
@@ -115,6 +147,26 @@ function update(patch) {
   } catch {
     /* TUI 已经关掉，忽略 */
   }
+}
+
+// ---------------------------------------------------------------------------
+// 步骤日志：1-7 步，每一步都说清"在做什么、结果如何"
+//
+// 用户的原话是"期望通过日志一步一步告知访问哪个服务器地址、服务地址是否通"。
+// 所以不是"最后给一句失败原因"，而是每一步都有落点：解释器是哪个、来源是哪个地址、
+// TCP 通不通、索引页返回什么、缺几个包、从哪儿下的、复检过没过。
+// stderr 给完整版（终端/日志可回溯），widget 给"第几步 + 这一步的结论"。
+// ---------------------------------------------------------------------------
+const TOTAL_STEPS = 7
+
+function stepHead(n, label) {
+  update({ step: n, stepLabel: label, stepDetail: "" })
+  warn(`${n}/${TOTAL_STEPS} ${label}`)
+}
+
+function stepInfo(text) {
+  update({ stepDetail: text })
+  warn(`    ${text}`)
 }
 
 /** 按显示宽度截断，避免把 widget 撑成不可读的长行。 */
@@ -157,6 +209,173 @@ function counts() {
   return "依赖"
 }
 
+// ---------------------------------------------------------------------------
+// server 连通性探测
+//
+// 为什么单独探：pip 失败时只会吐一坨重试日志和 "No matching distribution found"，
+// 分不清"地址不通"和"server 上没这个包"——而这两件事的处置完全不同（找网络 vs 补包）。
+// 先探 TCP、再探索引页，能把失败钉到具体一层。
+//
+// 探测失败 ≠ 装了会失败：代理、只放行 HTTP 的防火墙都会让 TCP 探测失真。
+// 所以只有**确定性失败**（拒绝连接 / 解析失败 / 路由不可达 / 索引页 404、401、403）
+// 才跳过 pip 直接给结论；超时这类不确定情况仍然让 pip 试一次。
+// ---------------------------------------------------------------------------
+function parseIndexUrl(indexUrl) {
+  try {
+    const u = new URL(indexUrl)
+    const port = Number(u.port) || (u.protocol === "https:" ? 443 : 80)
+    return { host: u.hostname, port, path: u.pathname || "/", protocol: u.protocol }
+  } catch {
+    return null
+  }
+}
+
+function probeTcp(host, port, timeoutMs) {
+  return new Promise((resolve) => {
+    const startedAt = Date.now()
+    const socket = new net.Socket()
+    let settled = false
+    const done = (ok, code) => {
+      if (settled) return
+      settled = true
+      const ms = Date.now() - startedAt
+      try {
+        socket.destroy()
+      } catch {
+        /* 已关 */
+      }
+      resolve({ ok, code, ms })
+    }
+    socket.setTimeout(timeoutMs)
+    socket.once("connect", () => done(true, "OK"))
+    socket.once("timeout", () => done(false, "ETIMEDOUT"))
+    socket.once("error", (err) => done(false, err?.code || "ERROR"))
+    try {
+      socket.connect(port, host)
+    } catch (err) {
+      done(false, err?.code || "ERROR")
+    }
+  })
+}
+
+/** 只取状态码，不下载页面内容——我们要的是"索引入口通不通"。 */
+function probeHttp(indexUrl, timeoutMs) {
+  return new Promise((resolve) => {
+    const target = parseIndexUrl(indexUrl)
+    if (!target) return resolve({ ok: false, code: "BAD_URL", status: 0, ms: 0 })
+
+    const startedAt = Date.now()
+    let settled = false
+    const done = (payload) => {
+      if (settled) return
+      settled = true
+      resolve({ ms: Date.now() - startedAt, ...payload })
+    }
+    const lib = target.protocol === "https:" ? https : http
+    try {
+      const req = lib.get(
+        {
+          host: target.host,
+          port: target.port,
+          path: target.path,
+          timeout: timeoutMs,
+          headers: { "User-Agent": "pi-deps-bootstrap" },
+        },
+        (res) => {
+          res.resume() // 丢弃正文，只要状态码
+          done({ ok: res.statusCode >= 200 && res.statusCode < 400, code: "HTTP", status: res.statusCode })
+        },
+      )
+      req.on("timeout", () => {
+        req.destroy()
+        done({ ok: false, code: "ETIMEDOUT", status: 0 })
+      })
+      req.on("error", (err) => done({ ok: false, code: err?.code || "ERROR", status: 0 }))
+    } catch (err) {
+      done({ ok: false, code: err?.code || "ERROR", status: 0 })
+    }
+  })
+}
+
+/** 把 socket 错误码翻成人话。 */
+function explainProbeCode(code) {
+  switch (code) {
+    case "ECONNREFUSED":
+      return "端口拒绝连接：该端口没有服务在听，或防火墙显式拒绝"
+    case "ENOTFOUND":
+    case "EAI_AGAIN":
+      return "主机名解析失败：indexUrl 里应写 IP，别写主机名"
+    case "EHOSTUNREACH":
+    case "ENETUNREACH":
+      return "路由不可达：这台机器没有到该网段的路由 / VPN 没连"
+    case "ETIMEDOUT":
+      return "连接超时：网络不通，或防火墙静默丢包"
+    case "ECONNRESET":
+      return "连接被重置：对端或中间设备中断了握手"
+    case "BAD_URL":
+      return "indexUrl 不是合法 URL"
+    default:
+      return `连接失败（错误码 ${code}）`
+  }
+}
+
+/** 确定性失败：不用再让 pip 白等 30s×2 重试。 */
+const FATAL_TCP_CODES = new Set([
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ECONNRESET",
+])
+
+/**
+ * 探测结果：
+ *   ok     true 表示 TCP 通且索引页能返回 2xx/3xx
+ *   fatal  true 表示确定拿不到包，不必再试 pip
+ *   lines  每一步的结论，按顺序打到日志和 widget 上
+ */
+async function probeServer(indexUrl) {
+  const target = parseIndexUrl(indexUrl)
+  if (!target) {
+    return { ok: false, fatal: true, lines: ["✗ indexUrl 不是合法 URL，检查 .pi/deps.json 的 indexUrl"] }
+  }
+
+  const tcp = await probeTcp(target.host, target.port, PROBE_TIMEOUT_MS)
+  if (!tcp.ok) {
+    return {
+      ok: false,
+      fatal: FATAL_TCP_CODES.has(tcp.code),
+      lines: [`✗ TCP ${target.host}:${target.port} 不可达（${tcp.ms}ms）→ ${explainProbeCode(tcp.code)}`],
+    }
+  }
+
+  const lines = [`✓ TCP ${target.host}:${target.port} 可达（${tcp.ms}ms）`]
+  const res = await probeHttp(indexUrl, PROBE_TIMEOUT_MS)
+  if (res.ok) {
+    lines.push(`✓ 索引页 ${target.path} 返回 ${res.status}（${res.ms}ms）`)
+    return { ok: true, fatal: false, lines }
+  }
+  if (res.code === "ETIMEDOUT") {
+    lines.push(`? 索引页 ${target.path} 请求超时（${res.ms}ms），仍让 pip 试一次`)
+    return { ok: false, fatal: false, lines }
+  }
+  const hint =
+    res.status === 404
+      ? `✗ 索引页 ${target.path} 返回 404：server 活着但路径不对（pip 要求 /simple），或镜像没建索引`
+      : res.status === 401 || res.status === 403
+        ? `✗ 索引页返回 ${res.status}：server 要求认证，pip 需要凭据才能取包`
+        : `✗ 索引路径 ${target.path} 返回 ${res.status}：server 活着但取包入口异常`
+  lines.push(hint)
+  return { ok: false, fatal: [404, 401, 403].includes(res.status), lines }
+}
+
+/** 解释器路径只留尾部两级，够识别又不撑爆一行。 */
+function shortPath(p) {
+  const parts = String(p || "").split(/[\\/]/).filter(Boolean)
+  return parts.length <= 2 ? String(p || "") : `…\\${parts.slice(-2).join("\\")}`
+}
+
 /** 包清单：一行放得下就全列，放不下就截断并标注还剩几个。 */
 function pkgLine() {
   const s = snapshot
@@ -173,31 +392,47 @@ function pkgLine() {
   return `已装 ${shown.join("  ")}${rest > 0 ? `  …另 ${rest} 个` : ""}`
 }
 
-/** 首页 widget 的内容：1-2 行，任何阶段都有一句能看懂的话。 */
+/**
+ * 首页 widget 的内容：任何阶段都有一句能看懂的话。
+ * 就位时给三件事：多少包、**从哪个地址来的**、装在哪个解释器里；
+ * 未就位时给两件事：停在第几步、那一步的结论是什么。
+ */
 function renderStatus() {
   const s = snapshot
+  const at = (n, label) => (n ? `${n}/${TOTAL_STEPS} ` : "") + label
+
   switch (s.phase) {
     case "init":
     case "checking":
-      return [`⏳ 正在检索开源依赖（${counts()}）...`]
+      return [
+        `⏳ ${at(s.step, s.stepLabel || "正在检索开源依赖")}（${counts()}）`,
+        s.stepDetail ? `   ${clip(s.stepDetail, 64)}` : "",
+      ].filter((line) => line.trim())
+
     case "installing":
       return [
-        `⏳ 依赖未就位（缺 ${s.missing.length || "?"} 个），正在从内网 server 下载安装...`,
-        `   ${clip(s.progress || "等待 pip 输出首个包...", 60)}`,
+        `⏳ ${at(s.step || 6, "从内网 server 下载安装")}（缺 ${s.missing.length || "?"} 个）`,
+        `   ${clip(s.progress || s.stepDetail || "等待 pip 输出首个包...", 64)}`,
       ]
+
     case "ok":
       return [
         `✓ 依赖已就位（${counts()} · CPython ${s.version || "?"}）${s.note || ""}`,
+        `   来源 ${clip(s.source || "未配置", 46)}${s.installedNow ? "（本次刚下载）" : "（本次未下载）"}`,
+        `   解释器 ${shortPath(s.pythonPath) || "?"}`,
         s.pkgs.length ? `   ${pkgLine()}` : "",
       ].filter((line) => line.trim())
+
     case "failed":
       return [
-        `✗ 依赖未就位${s.missing.length ? `（缺 ${s.missing.length} 个）` : ""}：${clip(s.detail, 52)}`,
-        `   ${clip(s.hint || "跑 PI_DEPS_CLI=1 看详细原因，或 PI_DEPS_VERBOSE=1 看判定过程", 60)}`,
-      ]
+        `✗ 依赖未就位（停在第 ${s.step || "?"}/${TOTAL_STEPS} 步：${s.stepLabel || "检查"}）`,
+        `   ${clip(s.detail || "原因见终端 [deps] 输出", 60)}`,
+        s.hint ? `   ${clip(s.hint, 60)}` : "",
+      ].filter((line) => line.trim())
+
     case "no-python":
       return [
-        `! 未找到 CPython ${s.wantVersion || ""} 解释器，依赖未检查也未安装`,
+        `! 未找到 CPython ${s.wantVersion || ""} 解释器（第 1/${TOTAL_STEPS} 步），依赖未检查也未安装`,
         `   py -0 查看本机已装版本；装好后重开 pi`,
       ]
     case "no-pip":
@@ -216,7 +451,11 @@ function renderStatus() {
 function findRepoRoot(start) {
   let dir = start
   for (let i = 0; i < 3; i += 1) {
-    if (fs.existsSync(path.join(dir, "requirements.txt"))) return dir
+    // 有 requirements.txt 或 .pi/deps.json 都算仓库根：后者让"依赖清单不叫
+    // requirements.txt"的项目也能定位（配置里再用 requirements 字段指真实路径）
+    if (fs.existsSync(path.join(dir, "requirements.txt")) || fs.existsSync(path.join(dir, CONFIG_FILE))) {
+      return dir
+    }
     const parent = path.dirname(dir)
     if (parent === dir) break
     dir = parent
@@ -224,28 +463,57 @@ function findRepoRoot(start) {
   return null
 }
 
-/** 读配置：内置默认 ← .pi/deps.json ← 环境变量（后者覆盖前者）。 */
+/**
+ * 读配置：内置默认 ← .pi/deps.json ← 环境变量（后者覆盖前者）。
+ * indexUrl 的默认值就是 DEFAULT_INDEX_URL，所以**不配任何文件也能跑**——
+ * 这是"拷给别的项目直接用"的前提。
+ */
 function readConfig(repoRoot) {
-  const config = { python: null, indexUrl: null, timeoutMinutes: 15 }
+  const config = {
+    python: null,
+    indexUrl: DEFAULT_INDEX_URL,
+    timeoutMinutes: 15,
+    requirements: "requirements.txt", // 相对仓库根；其他项目布局不同时可在此指定
+    gate: true, // 依赖未就位时是否拦用户指令
+    origin: "内置默认地址",
+  }
 
   try {
     const raw = JSON.parse(fs.readFileSync(path.join(repoRoot, CONFIG_FILE), "utf8"))
     if (typeof raw.python === "string" && raw.python.trim()) config.python = raw.python.trim()
-    if (typeof raw.indexUrl === "string" && raw.indexUrl.trim()) config.indexUrl = raw.indexUrl.trim()
+    if (typeof raw.indexUrl === "string" && raw.indexUrl.trim()) {
+      config.indexUrl = raw.indexUrl.trim()
+      config.origin = CONFIG_FILE
+    }
     if (Number.isFinite(raw.timeoutMinutes) && raw.timeoutMinutes > 0) {
       config.timeoutMinutes = raw.timeoutMinutes
     }
-    verbose(`配置: ${JSON.stringify(config)}（来自 ${CONFIG_FILE}）`)
+    if (typeof raw.requirements === "string" && raw.requirements.trim()) {
+      config.requirements = raw.requirements.trim()
+    }
+    if (typeof raw.blockOnMissing === "boolean") config.gate = raw.blockOnMissing
+    verbose(`配置: ${JSON.stringify({ ...config })}（来自 ${CONFIG_FILE}）`)
   } catch {
-    /* 没有配置文件是正常情况 */
+    /* 没有配置文件是正常情况——默认值已经够用 */
   }
 
   if (process.env.PI_DEPS_PY_VERSION) config.python = process.env.PI_DEPS_PY_VERSION.trim()
-  if (process.env.PI_PIP_INDEX_URL) config.indexUrl = process.env.PI_PIP_INDEX_URL.trim()
+  if (process.env.PI_PIP_INDEX_URL) {
+    config.indexUrl = process.env.PI_PIP_INDEX_URL.trim()
+    config.origin = "环境变量 PI_PIP_INDEX_URL"
+  }
   const envTimeout = Number(process.env.PI_DEPS_TIMEOUT_MIN)
   if (Number.isFinite(envTimeout) && envTimeout > 0) config.timeoutMinutes = envTimeout
+  if (process.env.PI_DEPS_GATE === "0") config.gate = false
 
   return config
+}
+
+/** requirements 文件的绝对路径（配置里可改文件名/子目录）。 */
+function reqFileOf(repoRoot, config) {
+  return path.isAbsolute(config.requirements)
+    ? config.requirements
+    : path.join(repoRoot, config.requirements)
 }
 
 function run(cmd, args, opts = {}) {
@@ -377,19 +645,19 @@ function writeState(repoRoot, state) {
   }
 }
 
-function requirementsMtime(repoRoot) {
+function requirementsMtime(reqFile) {
   try {
-    return fs.statSync(path.join(repoRoot, "requirements.txt")).mtimeMs
+    return fs.statSync(reqFile).mtimeMs
   } catch {
     return 0
   }
 }
 
 /** 直接依赖条数（去掉空行与注释），只用于提示语里报个数。 */
-function countRequirements(repoRoot) {
+function countRequirements(reqFile) {
   try {
     return fs
-      .readFileSync(path.join(repoRoot, "requirements.txt"), "utf8")
+      .readFileSync(reqFile, "utf8")
       .split(/\r?\n/)
       .filter((line) => line.trim() && !line.trim().startsWith("#")).length
   } catch {
@@ -494,7 +762,7 @@ print(json.dumps({
  * 算出"直接 + 传递"的完整闭包。失败返回 null，调用方退回只报直接依赖条数。
  * 用临时脚本而不是 `python -c`：多行脚本在 Windows 上过 cmd 的引号转义很容易翻车。
  */
-async function collectDepTree(repoRoot, python) {
+async function collectDepTree(repoRoot, python, reqFile) {
   const scriptPath = path.join(repoRoot, ".pi", "work", ".depscan.py")
   try {
     fs.mkdirSync(path.dirname(scriptPath), { recursive: true })
@@ -506,7 +774,7 @@ async function collectDepTree(repoRoot, python) {
 
   const result = await runStreaming(
     python.cmd,
-    [...python.args, scriptPath, path.join(repoRoot, "requirements.txt")],
+    [...python.args, scriptPath, reqFile],
     { timeoutMs: 30000, cwd: repoRoot, silent: true, env: { PYTHONIOENCODING: "utf-8" } },
   )
   if (result.code !== 0) {
@@ -567,7 +835,7 @@ function extractMissing(output) {
  * 异步跑（不阻塞事件循环），检查期间 widget 才能刷新出"正在检索"。
  * 返回 { ok, missing: string[], detail }。
  */
-async function checkDeps(repoRoot, python) {
+async function checkDeps(reqFile, python, cwd) {
   const result = await runStreaming(
     python.cmd,
     [
@@ -580,9 +848,9 @@ async function checkDeps(repoRoot, python) {
       "--disable-pip-version-check",
       "--no-input",
       "-r",
-      path.join(repoRoot, "requirements.txt"),
+      reqFile,
     ],
-    { timeoutMs: CHECK_TIMEOUT_MS, cwd: repoRoot, silent: true },
+    { timeoutMs: CHECK_TIMEOUT_MS, cwd, silent: true },
   )
 
   if (result.code === 0) return { ok: true, missing: [], detail: "" }
@@ -669,7 +937,7 @@ function indexArgs(indexUrl) {
  * --prefer-binary：离线机通常没有编译链，优先拿 wheel，别现场编译 sdist。
  * --progress-bar on：输出不是 tty 时 pip 默认关进度条，强制打开才能看到刷新。
  */
-async function installDeps(repoRoot, python, config, missing) {
+async function installDeps(repoRoot, python, config, missing, reqFile) {
   const startedAt = Date.now()
   const elapsed = () => Math.round((Date.now() - startedAt) / 1000)
   const lacks = missing.length
@@ -703,11 +971,11 @@ async function installDeps(repoRoot, python, config, missing) {
     "2",
     ...indexArgs(config.indexUrl),
     "-r",
-    path.join(repoRoot, "requirements.txt"),
+    reqFile,
   ]
 
-  warn(`依赖未就位（${lacks}），开始从内网 server 下载：${config.indexUrl}`)
-  warn(`pip 实时输出如下（下载进度即时刷新）...`)
+  warn(`  ${lacks}`)
+  warn(`  下载中，pip 原始输出如下（逐包进度实时刷新）...`)
   update({ phase: "installing", missing, progress: "" })
 
   // 把 pip 的最新一行顶到 widget 上。必须节流：进度条用 \r 高频刷新，
@@ -780,7 +1048,8 @@ async function installDeps(repoRoot, python, config, missing) {
  */
 async function verifyAgainstServer(repoRoot) {
   const config = readConfig(repoRoot)
-  const reqCount = countRequirements(repoRoot)
+  const reqFile = reqFileOf(repoRoot, config)
+  const reqCount = countRequirements(reqFile)
   const python = resolvePython(config)
   if (!python) {
     warn("! 未找到匹配的解释器，无法预检（py -0 查看本机已装版本）")
@@ -811,7 +1080,7 @@ async function verifyAgainstServer(repoRoot) {
     "2",
     ...indexArgs(config.indexUrl),
     "-r",
-    path.join(repoRoot, "requirements.txt"),
+    reqFile,
   ]
 
   warn(`预检：向 ${config.indexUrl} 查询 ${reqCount} 个直接依赖及其传递依赖（只查询，不安装）...`)
@@ -854,27 +1123,35 @@ async function verifyAgainstServer(repoRoot) {
  */
 async function ensureDeps(repoRoot) {
   const config = readConfig(repoRoot)
-  const reqMtime = requirementsMtime(repoRoot)
-  const reqCount = countRequirements(repoRoot)
+  const reqFile = reqFileOf(repoRoot, config)
+  const reqMtime = requirementsMtime(reqFile)
+  const reqCount = countRequirements(reqFile)
   const cached = readState(repoRoot)
   const now = Date.now()
   const force = process.env.PI_DEPS_FORCE === "1"
-  update({ phase: "checking", reqCount, wantVersion: config.python, missing: [] })
+  const startedAt = Date.now()
 
+  gateEnabled = config.gate
+  update({ phase: "checking", reqCount, wantVersion: config.python, missing: [], source: config.indexUrl })
+
+  // ---- 1/7 定位解释器 ------------------------------------------------------
+  stepHead(1, config.python ? `定位 CPython ${config.python} 解释器` : "定位 Python 解释器")
   const python = resolvePython(config)
   if (!python) {
     // 解释器缺失是硬阻塞（依赖一个都不会装），不吃缓存、每次启动都说
     const hint = config.python ? ` CPython ${config.python}` : ""
-    warn(`! 未找到${hint} 解释器，本次跳过依赖检查，依赖不会被安装`)
-    warn(`  py -0 查看本机已装版本；装好后重开 pi 即生效（PI_DEPS_SKIP=1 可静音）`)
+    stepInfo(`✗ 没有找到${hint}解释器，依赖一个都装不了`)
+    warn("  py -0 查看本机已装版本；装好后重开 pi 即生效（PI_DEPS_SKIP=1 可静音）")
     writeState(repoRoot, { status: "no-python", checkedAt: now, requirementsMtimeMs: reqMtime })
     update({ phase: "no-python", wantVersion: config.python })
     return { status: "no-python", missing: [] }
   }
+  stepInfo(`✓ ${python.executable}（${python.version}）`)
+  update({ pythonPath: python.executable })
 
-  // 先算闭包（本地读 metadata，约 0.3 秒，不联网）：这样"正在检索"那行就能报出真实总数
-  // （20 个包：7 直接 + 13 传递），而不是含糊的"7 个直接依赖 + 传递依赖"。
-  const tree = await collectDepTree(repoRoot, python)
+  // ---- 2/7 统计依赖闭包（本地，不联网） ------------------------------------
+  stepHead(2, `统计依赖闭包（${config.requirements}）`)
+  const tree = await collectDepTree(repoRoot, python, reqFile)
   if (tree) {
     update({
       directCount: tree.direct.length,
@@ -882,82 +1159,152 @@ async function ensureDeps(repoRoot) {
       total: tree.total,
       pkgs: [...tree.direct, ...tree.transitive],
     })
-    verbose(`依赖闭包：${tree.total} 个（${tree.direct.length} 直接 + ${tree.transitive.length} 传递）`)
+    stepInfo(`✓ 统计完成：${tree.total} 个包（${tree.direct.length} 直接 + ${tree.transitive.length} 传递）`)
+    if (tree.missing.length) stepInfo(`  直接依赖里已缺：${tree.missing.join(", ")}`)
+  } else {
+    stepInfo(`? 闭包统计失败，退回只报 ${reqCount} 个直接依赖（不影响判定）`)
   }
 
-  // 缓存命中：同一解释器 + requirements.txt 没改过 + 24h 内验证过。
+  // ---- 3/7 来源地址 --------------------------------------------------------
+  stepHead(3, "读取依赖来源地址")
+  stepInfo(`✓ ${config.indexUrl}（来自 ${config.origin}）`)
+
+  // 缓存命中：同一解释器 + 同一来源 + 清单没改过 + 24h 内验证过。
   // 提示里必须写清"多久前验的、本次没重跑"，否则会被误读成"刚检查过"。
   const cacheHit =
     !force &&
     cached?.status === "ok" &&
     cached.python === python.executable &&
     cached.requirementsMtimeMs === reqMtime &&
+    cached.indexUrl === config.indexUrl &&
     now - (cached.checkedAt || 0) < CACHE_TTL_MS
   if (cacheHit) {
-    verbose("缓存命中，跳过检查")
     const age = formatAge(now - (cached.checkedAt || 0))
     const when = age === "刚刚" ? "刚刚已" : `${age}前已`
+    stepInfo(`✓ ${when}用这个解释器、这个地址验过同一份清单，24 小时内不重复检查`)
+    stepInfo("  要立刻真查一次：PI_DEPS_FORCE=1 重开 pi")
     warn(`✓ 依赖已在位（${counts()}，${when}验证；本次跳过重复检查）`)
-    update({ phase: "ok", version: python.version, note: `（${when}验证）` })
+    warn(`  来源 ${config.indexUrl}（本次未下载）`)
+    warn(`  解释器 ${python.executable}`)
+    update({
+      phase: "ok",
+      version: python.version,
+      note: `（${when}验证）`,
+      cachedAt: cached.checkedAt,
+      installedNow: false,
+    })
     return { status: "ok", missing: [] }
   }
   if (force) verbose("PI_DEPS_FORCE=1，忽略缓存重查")
 
+  // ---- 4/7 本地比对 --------------------------------------------------------
+  // 先比对本机装没装、再探 server 通不通：依赖本来就齐时根本不需要碰网络，
+  // 探测就没有存在意义（也避免了"开发机不该连内网地址"这种无谓的越界）。
+  stepHead(4, "本地比对已装环境（pip --dry-run --no-index，不联网，约 10 秒）")
   if (!(await pipSupportsDryRun(python))) {
-    warn("! 目标环境的 pip 不支持 --dry-run（需 >= 22.2），无法检查依赖，建议先升级 pip")
+    stepInfo("✗ 目标环境的 pip 不支持 --dry-run（需 >= 22.2）")
+    warn("  先升级 pip：python -m pip install -U pip")
     writeState(repoRoot, { status: "no-pip", checkedAt: now, requirementsMtimeMs: reqMtime })
     update({ phase: "no-pip" })
     return { status: "no-pip", missing: [] }
   }
 
-  warn("检查依赖是否就位（本地比对，不联网，约 10 秒）...")
-  update({ phase: "checking", detail: "比对本地已装环境" })
-  const first = await checkDeps(repoRoot, python)
+  const first = await checkDeps(reqFile, python, repoRoot)
   if (first.ok) {
     writeState(repoRoot, {
       status: "ok",
       python: python.executable,
       version: python.version,
+      indexUrl: config.indexUrl,
       requirementsMtimeMs: reqMtime,
       checkedAt: now,
     })
+    stepInfo(`✓ ${counts()} 全部满足，无需下载`)
     warn(`✓ 依赖已在位（${counts()}，全部满足 · CPython ${python.version}，无需下载）`)
-    update({ phase: "ok", version: python.version, note: "" })
+    warn(`  来源 ${config.indexUrl}（来自 ${config.origin}，本次未下载）`)
+    warn(`  解释器 ${python.executable}`)
+    update({ phase: "ok", version: python.version, note: "", installedNow: false })
     return { status: "ok", missing: [] }
   }
 
-  verbose(`未满足: ${first.missing.join(", ") || first.detail}`)
+  stepInfo(`✗ 未满足 ${first.missing.length || "?"} 个：${first.missing.slice(0, 6).join(", ") || "版本不符"}`)
+  verbose(`未满足明细: ${first.missing.join(", ") || first.detail}`)
+
+  // ---- 5/7 探测 server -----------------------------------------------------
+  stepHead(5, `探测内网 server 连通性：${config.indexUrl}`)
+  let probe = { ok: false, fatal: false, lines: [] }
+  if (process.env.PI_DEPS_NO_PROBE === "1") {
+    stepInfo("? PI_DEPS_NO_PROBE=1，跳过探测")
+  } else {
+    probe = await probeServer(config.indexUrl)
+    for (const line of probe.lines) stepInfo(line)
+  }
+
+  // 第 4 步已确定拿不到包（拒绝连接 / 解析失败 / 索引页 404）：不再让 pip 白等一下。
+  if (probe.fatal) {
+    const detail = (probe.lines[probe.lines.length - 1] || "").replace(/^✗\s*/, "")
+    warn("✗ 第 5 步已确定这台机器取不到包，跳过下载安装（不再等 pip 超时重试）")
+    warn(`  原因：${detail}`)
+    writeState(repoRoot, {
+      status: "failed",
+      python: python.executable,
+      version: python.version,
+      indexUrl: config.indexUrl,
+      requirementsMtimeMs: reqMtime,
+      checkedAt: now,
+      detail,
+    })
+    update({
+      phase: "failed",
+      step: 5,
+      stepLabel: "探测内网 server 连通性",
+      detail,
+      hint: `先解决到 ${config.indexUrl} 的连通性；修好后重开 pi`,
+    })
+    return { status: "failed", missing: first.missing }
+  }
+
+  // ---- 6/7 下载安装 --------------------------------------------------------
+  stepHead(6, `从内网 server 下载安装（${first.missing.length || "?"} 个未满足）`)
   update({ phase: "installing", missing: first.missing })
-  const install = await installDeps(repoRoot, python, config, first.missing)
+  const install = await installDeps(repoRoot, python, config, first.missing, reqFile)
   if (!install.ok) {
-    warn(`✗ 依赖安装失败：${install.detail}`)
+    stepInfo(`✗ ${install.detail}`)
     if (install.hint) warn(`  ${install.hint}`)
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,
       version: python.version,
+      indexUrl: config.indexUrl,
       requirementsMtimeMs: reqMtime,
       checkedAt: now,
       detail: install.detail,
     })
     update({
       phase: "failed",
+      step: 6,
+      stepLabel: "从内网 server 下载安装",
       detail: install.detail,
       // 完整重试命令留在 stderr（终端/日志里能复制），widget 只放一句怎么查
-      hint: "详细原因与重试命令见终端 [deps] 输出，或跑 PI_DEPS_CLI=1 排查",
+      hint: "完整原因与重试命令见终端 [deps] 输出，或跑 PI_DEPS_CLI=1 排查",
     })
     return { status: "failed", missing: first.missing }
   }
+  stepInfo(`✓ pip 退出码 0，耗时 ${install.elapsed}s`)
+  if (install.installed) stepInfo(`  本次装入：${install.installed}`)
 
-  const second = await checkDeps(repoRoot, python)
+  // ---- 7/7 复检 ------------------------------------------------------------
+  stepHead(7, "复检（再跑一次本地比对）")
+  const second = await checkDeps(reqFile, python, repoRoot)
   if (!second.ok) {
     const detail = `下载完成但复检仍不满足：${second.missing.join(", ") || second.detail}`
-    warn(`✗ ${detail}`)
+    stepInfo(`✗ ${detail}`)
     warn("  说明内网 server 上的包版本与 requirements.txt 不一致，或传递依赖被裁掉了")
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,
       version: python.version,
+      indexUrl: config.indexUrl,
       requirementsMtimeMs: reqMtime,
       checkedAt: now,
       detail: second.detail,
@@ -972,7 +1319,7 @@ async function ensureDeps(repoRoot) {
 
   // 装完必须重算闭包：安装前那次数出来的是"当时已装的部分"，缺的包不在里面，
   // 直接拿它显示会报出偏小的总数（比如 7 个），正是用户之前吐槽的那个错。
-  const afterTree = await collectDepTree(repoRoot, python)
+  const afterTree = await collectDepTree(repoRoot, python, reqFile)
   if (afterTree) {
     update({
       directCount: afterTree.direct.length,
@@ -981,18 +1328,26 @@ async function ensureDeps(repoRoot) {
       pkgs: [...afterTree.direct, ...afterTree.transitive],
     })
   }
+  stepInfo(`✓ ${counts()} 全部满足`)
 
   writeState(repoRoot, {
     status: "ok",
     python: python.executable,
     version: python.version,
+    indexUrl: config.indexUrl,
     requirementsMtimeMs: reqMtime,
     checkedAt: now,
   })
-  warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，复检通过 · ${counts()}）`)
-  if (install.installed) warn(`  本次装入：${install.installed}`)
-  update({ phase: "ok", version: python.version, note: `（本次装入 ${install.elapsed}s）` })
-  return { status: "installed", missing: [] }
+  const totalSeconds = Math.round((Date.now() - startedAt) / 1000)
+  warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，${counts()} 全部满足）`)
+  warn(`  来源 ${config.indexUrl} · 解释器 ${python.executable}`)
+  update({
+    phase: "ok",
+    version: python.version,
+    note: `（本次装入 ${install.elapsed}s）`,
+    installedNow: true,
+  })
+  return { status: "installed", missing: [], elapsed: totalSeconds }
 }
 
 async function bootstrap() {
@@ -1002,11 +1357,19 @@ async function bootstrap() {
     return { status: "skipped", missing: [] }
   }
   const repoRoot = findRepoRoot(process.cwd())
-  if (!repoRoot || !fs.existsSync(path.join(repoRoot, "requirements.txt"))) {
-    verbose("当前目录及上 3 层没有 requirements.txt，跳过")
+  if (!repoRoot) {
+    verbose("当前目录及上 3 层既没有 requirements.txt 也没有 .pi/deps.json，跳过")
     update({ phase: "skipped" })
     return { status: "skipped", missing: [] }
   }
+  const config = readConfig(repoRoot)
+  const reqFile = reqFileOf(repoRoot, config)
+  if (!fs.existsSync(reqFile)) {
+    verbose(`${reqFile} 不存在，跳过（没有依赖清单就不该管）`)
+    update({ phase: "skipped" })
+    return { status: "skipped", missing: [] }
+  }
+  gateEnabled = config.gate
   return ensureDeps(repoRoot)
 }
 
@@ -1025,6 +1388,8 @@ async function bootstrap() {
 //   - 扩展自己发的消息（source=extension）放行：拦了会打断别的扩展的流程，
 //     而且用户要拦的是"人敲进来的自然语言"。
 // ---------------------------------------------------------------------------
+let gateEnabled = true
+
 function isReady() {
   return snapshot.phase === "ok" || snapshot.phase === "skipped"
 }
@@ -1097,7 +1462,7 @@ export default function depsBootstrap(pi) {
 
   pi.on("input", async (event, ctx) => {
     if (!event || event.source === "extension") return { action: "continue" }
-    if (isReady()) return { action: "continue" }
+    if (!gateEnabled || isReady()) return { action: "continue" }
 
     try {
       ctx?.ui?.notify?.(blockReason(), "warning")

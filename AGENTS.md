@@ -55,13 +55,14 @@
 
 | 时机 | 入口 | 行为 |
 |---|---|---|
-| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定（纯本地，不联网）→ 缺则**从内网 server（`indexUrl`）`--prefer-binary` 安装，pip 输出逐块实时转发**，失败给人话原因 → 结果缓存 24h；**每次启动必打状态行**，不吃静默 |
+| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（同步工厂，长任务丢后台，进度走 widget） | **按 7 步走，每步都有日志**：①定位解释器 ②统计依赖闭包 ③读来源地址 ④本地比对（`--no-index`，不联网）⑤探测 server 连通性（TCP + 索引页）⑥从内网 server 下载（pip 输出逐块实时转发）⑦复检。依赖本来就齐时只走 1-4 步，**根本不碰网络**。结果缓存 24h |
 | 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走内网镜像 |
 | 换机 / 补包 | `.pi/wheels/README.md` | `pip download` 到对应版本子目录 |
 
 > **依赖只有一条安装通路：内网 server（`.pi/deps.json` 的 `indexUrl`）。**
 > 自举**不回退公网 PyPI、也不读 `.pi/wheels` 本地目录**——离线机连不上公网，回退只会白等；
-> 本地包是另一条要维护的路径，已从自举里删除。`indexUrl` 没配就直接报错，绝不偷偷走公网。
+> 本地包是另一条要维护的路径，已从自举里删除。地址有内置默认值（`DEFAULT_INDEX_URL`），
+> 配错或换环境用配置覆盖，**永不偷偷回退公网 PyPI**。
 >
 > **开发机到不了那个内网 IP，这是正常状态**：源码在这边写、拷到离线 PC 上跑，只有那台机器能连通
 > server。所以别在开发机上试连 `172.30.39.34`（只会白等超时），也别指望开发机能验证下载路径——
@@ -72,7 +73,7 @@
 
 | 通道 | 内容 | 给谁看 |
 |---|---|---|
-| **TUI widget**（`deps-status`，输入框下方 `belowEditor`） | ⏳ 正在检索（20 个包：7 直接 + 13 传递）/ ⏳ 下载安装（带 pip 最新进度行）/ ✓ 已就位 20 个包 + 包清单 / ✗ 未就位 + 一句怎么查 | **用户**。pi 进 interactive 模式会切 alternate screen 重绘，stderr 全被盖掉——2026-11-18 就是因此首页一片干净，用户压根不知道依赖检没检查 |
+| **TUI widget**（`deps-status`，输入框下方 `belowEditor`） | ⏳ `3/7 探测内网 server 连通性` + 该步结论 / ✓ 已就位时给**四行**：多少个包、**来源地址**、**解释器路径**、包清单 / ✗ 未就位时给"停在第几步 + 原因 + 怎么办" | **用户**。pi 进 interactive 模式会切 alternate screen 重绘，stderr 全被盖掉——2026-11-18 就是因此首页一片干净，用户压根不知道依赖检没检查 |
 | stderr `[deps] ...` | 同上内容的完整版 + 手动重试命令 | CLI / print 模式 / 日志 / 排查 |
 
 依赖不是 `ok` 时，footer 常驻一行 `ctx.ui.setStatus("deps", "依赖未就位")`，每次重绘同步更新。
@@ -88,19 +89,50 @@
   `/help`、`/exit` 照常可用；`!` bash 命令走 `user_bash`，也不拦。
 - 扩展自己发的消息（`event.source === "extension"`）放行，免得打断别的扩展流程。
 
-**启动时终端/stderr 会看到的七种行**（前缀 `[deps]`）：
+**启动时终端/stderr 会看到的分步日志**（前缀 `[deps]`，序号 1-7）：
 
 ```
-依赖闭包：20 个（7 直接 + 13 传递）                                ← 本地读 metadata 算的，PI_DEPS_VERBOSE=1 才显示
-检查依赖是否就位（本地比对，不联网，约 10 秒）...                   ← 非缓存命中时先报这句
-✓ 依赖已在位（20 个包：7 直接 + 13 传递，3.2 小时前已验证；本次跳过重复检查） ← 24h 缓存命中，没重跑
-✓ 依赖已在位（20 个包：7 直接 + 13 传递，全部满足 · CPython 3.12.10，无需下载） ← 真跑过 pip 检查
-依赖未就位（3 个未满足：numpy, pillow, ...），开始从内网 server 下载：<url>
-pip 实时输出如下（下载进度即时刷新）...                           ← 后面是 pip 的逐包下载输出
-✓ 依赖安装完成（耗时 42s，复检通过 · 20 个包：7 直接 + 13 传递） + 本次装入：a-1.0 b-2.0 …
-✗ 依赖安装失败：内网 server 拒绝连接（172.30.39.34:8765）：这台机器到该 IP/端口不通…
-! 未找到 CPython 3.12 解释器，本次跳过依赖检查，依赖不会被安装   ← 每次都打，不吃缓存
+1/7 定位 CPython 3.12 解释器
+    ✓ C://...//pythoncore-3.12-64//python.exe（3.12）
+2/7 统计依赖闭包（requirements.txt）
+    ✓ 统计完成：20 个包（7 直接 + 13 传递）
+3/7 读取依赖来源地址
+    ✓ http://172.30.39.34:8765/simple（来自 .pi/deps.json）
+4/7 本地比对已装环境（pip --dry-run --no-index，不联网，约 10 秒）
+    ✓ 20 个包：7 直接 + 13 传递 全部满足，无需下载
+✓ 依赖已在位（20 个包：7 直接 + 13 传递，全部满足 · CPython 3.12，无需下载）
+  来源 http://172.30.39.34:8765/simple（来自 .pi/deps.json，本次未下载）
+  解释器 C://...//pythoncore-3.12-64//python.exe
 ```
+
+依赖缺了才会走到 5-7 步，第 5 步把"地址通不通"说透：
+
+```
+4/7 本地比对已装环境（pip --dry-run --no-index，不联网，约 10 秒）
+    ✗ 未满足 3 个：numpy, pillow, matplotlib
+5/7 探测内网 server 连通性：http://172.30.39.34:8765/simple
+    ✓ TCP 172.30.39.34:8765 可达（12ms）
+    ✓ 索引页 /simple 返回 200（18ms）
+6/7 从内网 server 下载安装（3 个未满足）
+    下载中，pip 原始输出如下（逐包进度实时刷新）...
+    ✓ pip 退出码 0，耗时 42s
+      本次装入：numpy-2.4.6  pillow-12.3.0  matplotlib-3.11.2  …
+7/7 复检（再跑一次本地比对）
+    ✓ 20 个包：7 直接 + 13 传递 全部满足
+```
+
+第 5 步的失败会直接给出结论，**不再让 pip 白等 30s×2 重试**：
+
+```
+5/7 探测内网 server 连通性：http://172.30.39.34:8765/simple
+    ✗ TCP 172.30.39.34:8765 不可达（3ms）→ 端口拒绝连接：该端口没有服务在听，或防火墙显式拒绝
+✗ 第 5 步已确定这台机器取不到包，跳过下载安装（不再等 pip 超时重试）
+```
+
+探测分两层：**TCP**（能不能握手）→ **索引页 GET**（`/simple` 返回什么）。
+只有确定性失败（拒绝连接 / 解析失败 / 路由不可达 / 索引页 404、401、403）才跳过 pip；
+超时这种"可能被防火墙拖住"的情况仍然让 pip 试一次——探测失败 ≠ 装了会失败，
+代理和只放行 HTTP 的防火墙都会让 TCP 探测失真。
 
 **口径是全部依赖，不是 requirements.txt 那 7 行**：`requirements.txt` 只写 7 个直接依赖，
 pip 会顺着依赖树再装 13 个传递依赖。闭包由 `collectDepTree` 用 `importlib.metadata`
@@ -117,9 +149,21 @@ pip 会顺着依赖树再装 13 个传递依赖。闭包由 `collectDepTree` 用
 **判定方式**：不猜 import 名、不自己比版本——直接跑
 `pip install --dry-run --no-index -r requirements.txt`，退出码 0 = 全部满足（含版本约束）。
 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护，
-`numpy==2.4.6` 是否真装对也由 pip 权威实现负责。**这个脚本与具体项目无关**：
-任何有 `requirements.txt` 的 pi 项目丢进 `.pi/extensions/` 即可用（含 `~/.pi/agent/extensions/`
-全局生效）。`.pi/deps.json` 的 `indexUrl` 不配就**直接报错**，不拿公网 PyPI 兜底。
+`numpy==2.4.6` 是否真装对也由 pip 权威实现负责。
+
+## 这是一个可以拷走的通用脚本
+
+`.pi/extensions/deps-bootstrap.ts` **不绑定本项目**，任何有 `requirements.txt` 的 pi 项目
+丢进 `.pi/extensions/` 就能用（放 `~/.pi/agent/extensions/` 则全局生效）：
+
+- **内网 server 地址内置成默认值**（`DEFAULT_INDEX_URL`），零配置即可工作；
+  换环境时用 `.pi/deps.json` 的 `indexUrl` 或 `PI_PIP_INDEX_URL` 覆盖，**不要改代码**——
+  改代码的后果是拷给别人时把别人的地址也一起改了。
+- 仓库根靠"有 `requirements.txt` 或 `.pi/deps.json`"识别；清单文件名/子目录不同时，
+  用 `.pi/deps.json` 的 `requirements` 字段指路。
+- 状态缓存写在项目自己的 `.pi/work/.deps-state.json`，不会跨项目串。
+- 不想要"未就位时拦指令"？`.pi/deps.json` 里 `blockOnMissing: false` 或 `PI_DEPS_GATE=0`。
+- **仍然强制内网 server 单源**：不回退公网 PyPI、不读 `.pi/wheels`。
 
 **本项目靠 `.pi/deps.json` 落地两个私有约束**：
 
@@ -130,10 +174,16 @@ pip 会顺着依赖树再装 13 个传递依赖。闭包由 `collectDepTree` 用
 - `python: "3.12"` → 只认 3.12 解释器，找不到就跳过并每次提示（不吃缓存）；不配则用
   PATH 上的 python，不看版本。
 - `indexUrl` → 内网镜像，**装包唯一来源**，pip 标准索引路径 `/simple`（不是 `/simples`）。
-  脚本会自动补 `--trusted-host`（http 源不带会被 pip 直接拒绝）；不配则直接报错，**不走公网**。
+  脚本会自动补 `--trusted-host`（http 源不带会被 pip 直接拒绝）。
+  **不配就用内置默认值**，所以零配置也能跑；配了就优先用配置，绝不回退公网 PyPI。
+- `requirements` → 清单文件相对路径，默认 `requirements.txt`（其他项目布局不同时用）。
+- `blockOnMissing` → 依赖未就位时是否拦用户指令，默认 `true`；`false` 则不拦。
+- 日志里的"来自 XXX"会明说是**内置默认地址**、`.pi/deps.json` 还是**环境变量**——
+  排查时先看这一行，能省掉"到底读了哪份配置"的猜谜。
 - 安装失败**不阻塞 pi 启动**，只打警告 + 人话原因 + 手动重试命令——起不来的 pi 没法排查问题。
 - 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、`PI_DEPS_FORCE=1` 忽略 24h 缓存强制重查、
   `PI_DEPS_VERIFY=1` 预检内网 server 能否取全（只查询不安装，退出码 0/1，只在离线 PC 上跑）、
+  `PI_DEPS_NO_PROBE=1` 跳过第 5 步的连通性探测、`PI_DEPS_GATE=0` 不拦用户指令、
   `PI_PIP_INDEX_URL` / `PI_DEPS_PY_VERSION` / `PI_DEPS_TIMEOUT_MIN` 覆盖 deps.json。
 - **server 端要齐的不是 7 个包，是 20 个**：7 个直接依赖 + 13 个传递依赖（清单见
   `.pi/wheels/README.md`）。少一个传递依赖，pip 会转去找 sdist、离线机没编译链就失败。
