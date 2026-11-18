@@ -50,7 +50,7 @@ goto offline
 :online
 echo [2/3] No local wheels found - installing from PyPI (needs network)...
 REM ---- internal mirror first, public PyPI as fallback ----
-set "PIP_INDEX=--index-url http://172.30.39.34:8765/simple --trusted-host 172.30.39.34"
+set "PIP_INDEX=--index-url http://172.30.39.34:18080/simple --trusted-host 172.30.39.34"
 %PY% -m pip install --upgrade pip
 %PY% -m pip install --disable-pip-version-check %PIP_INDEX% -r "%~dp0requirements.txt"
 if errorlevel 1 (

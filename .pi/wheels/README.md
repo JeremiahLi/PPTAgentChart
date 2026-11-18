@@ -70,7 +70,7 @@ npx jiti .pi/extensions/deps-bootstrap.ts
 只查询、不安装、不改本地环境，退出码 0 = 20 个包全都能取到：
 
 ```
-[deps] 预检：向 http://172.30.39.34:8765/simple 查询 7 个直接依赖及其传递依赖（只查询，不安装）...
+[deps] 预检：向 http://172.30.39.34:18080/simple 查询 7 个直接依赖及其传递依赖（只查询，不安装）...
 [deps] ✓ 预检通过：requirements.txt 的直接依赖与传递依赖都能从内网 server 取到
 [deps]   解析出 20 个包：numpy-2.4.6  pillow-12.3.0  ...
 ```
@@ -84,18 +84,18 @@ npx jiti .pi/extensions/deps-bootstrap.ts
 
 ## 补一个包 / 换解释器版本
 
-从内网镜像拉（`172.30.39.34:8765`，pip 标准 `/simple` 索引）：
+从内网镜像拉（`172.30.39.34:18080`，pip 标准 `/simple` 索引）：
 
 ```bat
 REM 只下 wheel 不安装，落到指定子目录
 python -m pip download -d .pi\wheels\py312 --only-binary=:all: ^
-    --index-url http://172.30.39.34:8765/simple --trusted-host 172.30.39.34 ^
+    --index-url http://172.30.39.34:18080/simple --trusted-host 172.30.39.34 ^
     -r requirements.txt
 
 REM 换 3.14 的解释器就改版本号
 python -m pip download -d .pi\wheels\py314 --only-binary=:all: ^
     --python-version 3.14 --platform win_amd64 ^
-    --index-url http://172.30.39.34:8765/simple --trusted-host 172.30.39.34 ^
+    --index-url http://172.30.39.34:18080/simple --trusted-host 172.30.39.34 ^
     -r requirements.txt
 ```
 

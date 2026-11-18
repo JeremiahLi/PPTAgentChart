@@ -34,7 +34,7 @@
  * 配置：`<仓库根>/.pi/deps.json`（全部字段可选）
  *   {
  *     "python": "3.12",                              // 限定解释器版本；不填=用 PATH 上的 python
- *     "indexUrl": "http://172.30.39.34:8765/simple",  // **内网 server，装包唯一来源**
+ *     "indexUrl": "http://172.30.39.34:18080/simple",  // **内网 server，装包唯一来源**
  *     "timeoutMinutes": 15                            // 安装超时，默认 15
  *   }
  *
@@ -101,7 +101,7 @@ const PROBE_TIMEOUT_MS = 5000
  * 换机器/换项目时不要去改这里，用 `.pi/deps.json` 的 indexUrl 或 PI_PIP_INDEX_URL 覆盖。
  * 改代码的后果是：拷贝给别人时把别人的地址也一起改了。
  */
-const DEFAULT_INDEX_URL = "http://172.30.39.34:8765/simple"
+const DEFAULT_INDEX_URL = "http://172.30.39.34:18080/simple"
 
 function verbose(msg) {
   if (process.env.PI_DEPS_VERBOSE) process.stderr.write(`[deps] ${msg}\n`)

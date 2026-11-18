@@ -1,4 +1,4 @@
 {
   "python": "3.12",
-  "indexUrl": "http://172.30.39.34:8765/simple"
+  "indexUrl": "http://172.30.39.34:18080/simple"
 }
