@@ -94,7 +94,7 @@
 ```
 1/7 定位 CPython 3.12 解释器
     ✓ C://...//pythoncore-3.12-64//python.exe（3.12）
-2/7 统计依赖闭包（内置清单 7 条）
+2/7 统计依赖闭包（requirements.txt 7 条）
     ✓ 统计完成：20 个包（7 直接 + 13 传递）
 3/7 读取依赖来源地址
     ✓ http://172.30.39.34:18080/simple（来自扩展内置配置）
@@ -147,38 +147,40 @@ pip 会顺着依赖树再装 13 个传递依赖。闭包由 `collectDepTree` 用
 （`pip --dry-run --no-index` 实测），每次启动都跑不可接受。要立刻真查：`PI_DEPS_FORCE=1 pi`。
 
 **判定方式**：不猜 import 名、不自己比版本——直接跑
-`pip install --dry-run --no-index -r <内置清单落成的临时文件>`，退出码 0 = 全部满足（含版本约束）。
+`pip install --dry-run --no-index -r requirements.txt`，退出码 0 = 全部满足（含版本约束）。
 `python-pptx→pptx`、`Pillow→PIL`、`PyYAML→yaml` 这类映射一概不用维护，
 `numpy==2.4.6` 是否真装对也由 pip 权威实现负责。
 
-## 完全自包含的单文件脚本
+## 单文件脚本：配置内联，清单只读 requirements.txt
 
 `.pi/extensions/deps-bootstrap.ts` **不绑定本项目、不读任何外部配置文件**：一个 .ts 丢进任意
 pi 项目的 `.pi/extensions/`（放 `~/.pi/agent/extensions/` 则全局生效）就能工作。
 
-**所有配置都在文件顶部的 `CONFIG` 常量里**（约第 100 行），三样：`python` / `indexUrl` /
-`requirements`（依赖清单数组）。要改地址、改解释器版本、改依赖就改这三处，没有第二份配置。
+分工是明确的两半：
+
+- **配置内联**：文件顶部 `CONFIG` 常量（约第 100 行）承载 `python` / `indexUrl` /
+  `timeoutMinutes` / `gate` / `requirementsFile`。要换地址、换解释器版本、改超时就改这里，
+  没有第二份配置、也没有环境变量能改它们。
+- **依赖清单外置**：只从仓库根的 `requirements.txt` 读（文件名由 `CONFIG.requirementsFile` 指定）。
+  版本号属于项目内容、随版本走，抄进代码只会多一处要同步的副本——所以脚本里**不含任何版本号**。
 
 - `.pi/deps.json` **已删除**：它曾经承载 `python` / `indexUrl` / `timeoutMinutes` /
-  `requirements` / `blockOnMissing`，现在全部并入 `CONFIG`。环境变量 `PI_PIP_INDEX_URL`、
+  `blockOnMissing`，现在全部并入 `CONFIG`。环境变量 `PI_PIP_INDEX_URL`、
   `PI_DEPS_PY_VERSION`、`PI_DEPS_TIMEOUT_MIN` 也都移除了——地址"固定不变"就是这么落实的，
   不存在"某台机器上被环境变量改了却不知道"的情况。
-- 仓库根靠**向上 3 层内的 `.pi` 目录**识别，不再依赖 `requirements.txt` 是否存在。
-- 依赖清单内联后，pip 的 `-r` 指向系统临时目录里的 `pi-deps-bootstrap-req.txt`（每次启动重写）。
-  所以即使项目里没有 `requirements.txt` 也能判定。
-- **`CONFIG.requirements` 与仓库根 `requirements.txt` 必须同步**：后者仍供 `setup.bat` 离线装包
-  和人工 pip 使用。两者不一致时启动会打一行 `! 内置依赖清单与 requirements.txt 不一致`，
-  并列出差异项——漂移可见，不静默。
-- 状态缓存写在项目自己的 `.pi/work/.deps-state.json`，键含清单指纹，不会跨项目串。
+- 仓库根靠**向上 3 层内的 `requirements.txt` 或 `.pi` 目录**识别（任一存在即可）。
+- 清单不存在时**显式报错并跳过**（`✗ 依赖清单不存在：…`），不静默当作"已就位"。
+- 状态缓存写在项目自己的 `.pi/work/.deps-state.json`，键含**清单内容指纹**（不是 mtime，
+  免得 git checkout 让 mtime 变、内容没变却失效），不会跨项目串。
 - 不想要"未就位时拦指令"？改 `CONFIG.gate: false` 或临时设 `PI_DEPS_GATE=0`。
 - **强制内网 server 单源**：不回退公网 PyPI、不读 `.pi/wheels`。
 
-本项目的两个私有约束就写在这三行里：
+本项目的两个私有约束就写在这几行里：
 
 ```ts
 python: "3.12",                              // 只认 3.12，找不到就每次提示（不吃缓存）
 indexUrl: "http://172.30.39.34:18080/simple", // 内网镜像，装包唯一来源
-requirements: [ /* 7 个直接依赖 */ ],          // 传递依赖 13 个由 pip 自行解析
+requirementsFile: "requirements.txt",        // 清单唯一真相，脚本里不存副本
 ```
 
 - `indexUrl` 走 pip 标准索引路径 `/simple`（不是 `/simples`）；脚本会自动补 `--trusted-host`
