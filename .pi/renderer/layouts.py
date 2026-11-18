@@ -3668,7 +3668,7 @@ def render_chart_native(slide, m):
 
 
 def render_chart(slide, m):
-    """图表页派发：默认 matplotlib 高质感图，--chart-mode native 走原生可编辑图表。"""
+    """图表页派发：默认 native 原生可编辑图表，--chart-mode mpl 走 matplotlib 高质感 PNG。"""
     if CHART_MODE == "native":
         render_chart_native(slide, m)
     else:
