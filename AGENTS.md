@@ -107,7 +107,12 @@ pip 实时输出如下（下载进度即时刷新）...                         
   脚本会自动补 `--trusted-host`（http 源不带会被 pip 直接拒绝）；不配则直接报错，**不走公网**。
 - 安装失败**不阻塞 pi 启动**，只打警告 + 人话原因 + 手动重试命令——起不来的 pi 没法排查问题。
 - 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、`PI_DEPS_FORCE=1` 忽略 24h 缓存强制重查、
+  `PI_DEPS_VERIFY=1` 预检内网 server 能否取全（只查询不安装，退出码 0/1，只在离线 PC 上跑）、
   `PI_PIP_INDEX_URL` / `PI_DEPS_PY_VERSION` / `PI_DEPS_TIMEOUT_MIN` 覆盖 deps.json。
+- **server 端要齐的不是 7 个包，是 20 个**：7 个直接依赖 + 13 个传递依赖（清单见
+  `.pi/wheels/README.md`）。少一个传递依赖，pip 会转去找 sdist、离线机没编译链就失败。
+  另外 server 得是合规的 PEP 503 索引（`/simple/<包名>/` 有文件链接），
+  光把 whl 堆进目录不算——索引 404 时 pip 报的也是 `No matching distribution found`，极易误判。
 - 仓库根只向上找 3 层就停：再往上是父目录的别的项目，会把依赖装错地方。
 - 已知边界：`pip install` 装进目标解释器本身，**没有 venv 隔离**。多项目共用一个 Python
   会互相顶版本，靠「一个项目一个 venv」的约定规避。

@@ -38,6 +38,7 @@
  *   PI_DEPS_TIMEOUT_MIN  同 timeoutMinutes
  *   PI_DEPS_SKIP=1       完全跳过（应急）
  *   PI_DEPS_FORCE=1      忽略 24h 缓存，强制真跑一次检查
+ *   PI_DEPS_VERIFY=1     预检模式：只向 server 查询能否取全，不安装、不写状态，退出码 0/1
  *   PI_DEPS_VERBOSE=1    打印判定过程
  *   PI_DEPS_CLI=1        命令行模式（检查/安装后退出，不挂到 pi 上）
  *
@@ -257,6 +258,25 @@ function pipSupportsDryRun(python) {
 }
 
 /**
+ * 这段输出是不是"根本没连上"。
+ * 必须和"连上了但没这个包"分开——pip 两种情形都会吐 No matching distribution found，
+ * 连接失败时去报"server 缺包"会把人引到镜像同步上去，白折腾。
+ */
+function isNetworkFailure(text) {
+  return /WinError 10061|WinError 10060|WinError 10065|WinError 11001|WinError 11002|Connection refused|NewConnectionError|Failed to establish a new connection|timed out|TimeoutError|ReadTimeoutError|Name or service not known|getaddrinfo failed|nodename nor servname/i.test(
+    String(text || ""),
+  )
+}
+
+/** 从 pip 输出里提取缺包名（checkDeps 与 verify 共用，口径必须一致）。 */
+function extractMissing(output) {
+  const names = [...String(output || "").matchAll(/No matching distribution found for (\S+)/g)].map(
+    (m) => m[1].replace(/[;,.]+$/, ""),
+  )
+  return [...new Set(names)]
+}
+
+/**
  * 用 pip 自己做满足性检查：--no-index 保证完全不联网，只比对已装环境。
  * 返回 { ok, missing: string[], detail }。
  */
@@ -281,12 +301,9 @@ function checkDeps(repoRoot, python) {
   if (result.status === 0) return { ok: true, missing: [], detail: "" }
 
   const output = `${result.stderr || ""}\n${result.stdout || ""}`
-  const missing = [...output.matchAll(/No matching distribution found for (\S+)/g)].map((m) =>
-    m[1].replace(/[;,.]+$/, ""),
-  )
   // 只留最后几行：pip 的报错价值在尾部
   const detail = output.trim().split(/\r?\n/).slice(-4).join("\n")
-  return { ok: false, missing: [...new Set(missing)], detail }
+  return { ok: false, missing: extractMissing(output), detail }
 }
 
 /**
@@ -346,6 +363,21 @@ function summarizeInstalled(output) {
 }
 
 /**
+ * 内网 server 的 pip 参数：--index-url + 自动补 --trusted-host。
+ * http 源不带 trusted-host 会被 pip 直接拒绝，所以两处（安装 / 预检）必须同口径。
+ */
+function indexArgs(indexUrl) {
+  const args = ["--index-url", indexUrl]
+  try {
+    const host = new URL(indexUrl).hostname
+    if (host) args.push("--trusted-host", host)
+  } catch {
+    /* 非法 URL 交给 pip 自己报错 */
+  }
+  return args
+}
+
+/**
  * 从内网 server 安装。强制单源：没配 indexUrl 直接失败，不偷偷走公网。
  * --prefer-binary：离线机通常没有编译链，优先拿 wheel，别现场编译 sdist。
  * --progress-bar on：输出不是 tty 时 pip 默认关进度条，强制打开才能看到刷新。
@@ -382,16 +414,10 @@ async function installDeps(repoRoot, python, config, missing, reqCount) {
     "30",
     "--retries",
     "2",
-    "--index-url",
-    config.indexUrl,
+    ...indexArgs(config.indexUrl),
+    "-r",
+    path.join(repoRoot, "requirements.txt"),
   ]
-  try {
-    const host = new URL(config.indexUrl).hostname
-    if (host) args.push("--trusted-host", host)
-  } catch {
-    /* 非法 URL 交给 pip 自己报错 */
-  }
-  args.push("-r", path.join(repoRoot, "requirements.txt"))
 
   warn(`依赖未就位（${lacks}），开始从内网 server 下载：${config.indexUrl}`)
   warn(`pip 实时输出如下（下载进度即时刷新）...`)
@@ -439,6 +465,80 @@ async function installDeps(repoRoot, python, config, missing, reqCount) {
     detail: "",
     hint: "",
   }
+}
+
+/**
+ * 预检：只问内网 server「这些包能不能拿全」，不安装、不写缓存状态。
+ * 意义是能把「网络不通」和「server 上缺包」分开——两者在 pip 输出里都会出现
+ * "No matching distribution found"，运营时最容易被搞混的就是这两件事。
+ *
+ * --ignore-installed 是关键：不加的话 pip 会把"本机已装"当成已满足、根本不去 server 查，
+ * 预检就退化成自查，白跑一遍。
+ */
+async function verifyAgainstServer(repoRoot) {
+  const config = readConfig(repoRoot)
+  const reqCount = countRequirements(repoRoot)
+  const python = resolvePython(config)
+  if (!python) {
+    warn("! 未找到匹配的解释器，无法预检（py -0 查看本机已装版本）")
+    return { status: "no-python", missing: [] }
+  }
+  if (!config.indexUrl) {
+    warn("✗ 未配置内网 server 地址（.pi/deps.json 的 indexUrl），无法预检")
+    return { status: "no-index", missing: [] }
+  }
+  if (!pipSupportsDryRun(python)) {
+    warn("! pip 不支持 --dry-run（需 >= 22.2），无法预检")
+    return { status: "no-pip", missing: [] }
+  }
+
+  const args = [
+    ...python.args,
+    "-m",
+    "pip",
+    "install",
+    "--dry-run",
+    "--ignore-installed",
+    "--disable-pip-version-check",
+    "--no-input",
+    "--prefer-binary",
+    "--timeout",
+    "30",
+    "--retries",
+    "2",
+    ...indexArgs(config.indexUrl),
+    "-r",
+    path.join(repoRoot, "requirements.txt"),
+  ]
+
+  warn(`预检：向 ${config.indexUrl} 查询 ${reqCount} 个直接依赖及其传递依赖（只查询，不安装）...`)
+  const result = await runStreaming(python.cmd, args, {
+    cwd: repoRoot,
+    timeoutMs: config.timeoutMinutes * 60 * 1000,
+  })
+
+  if (result.timedOut) {
+    warn(`✗ 预检超时（超过 ${config.timeoutMinutes} 分钟），server 响应过慢`)
+    return { status: "failed", missing: [] }
+  }
+  if (result.code !== 0) {
+    warn(`✗ 预检失败：${explainFailure(result.output, config.indexUrl)}`)
+    const missing = extractMissing(result.output)
+    // 网络不通时 pip 也会吐 No matching distribution，这时报缺包就是误导
+    if (missing.length && !isNetworkFailure(result.output)) {
+      warn(`  内网 server 上缺这些包：${missing.join(", ")}`)
+    }
+    return { status: "failed", missing }
+  }
+
+  const would = (result.output.match(/Would install ([^\r\n]+)/i) || [])[1]
+  warn("✓ 预检通过：requirements.txt 的直接依赖与传递依赖都能从内网 server 取到")
+  if (would) {
+    const pkgs = would.trim().split(/\s+/).filter(Boolean)
+    const shown = pkgs.length > 8 ? `${pkgs.slice(0, 8).join("  ")}  …等 ${pkgs.length} 个` : pkgs.join("  ")
+    warn(`  解析出 ${pkgs.length} 个包：${shown}`)
+  }
+  return { status: "ok", missing: [] }
 }
 
 /**
@@ -573,10 +673,19 @@ export default async function depsBootstrap(_pi) {
 }
 
 // ---------------------------------------------------------------------------
-// 命令行模式：PI_DEPS_CLI=1 npx jiti .pi/extensions/deps-bootstrap.ts
-// 用于人工排查与 setup.bat 调用
+// 命令行模式：
+//   预检（只问 server 能不能拿全，不装）  PI_DEPS_VERIFY=1 npx jiti <本文件>
+//   检查 + 需要就装                      PI_DEPS_CLI=1    npx jiti <本文件>
+// setup.bat 与人工排查都走这两条
 // ---------------------------------------------------------------------------
-if (process.env.PI_DEPS_CLI === "1") {
+if (process.env.PI_DEPS_VERIFY === "1") {
+  const repoRoot = findRepoRoot(process.cwd())
+  if (!repoRoot) {
+    warn("! 当前目录及上 3 层没有 requirements.txt，无需预检")
+    process.exit(0)
+  }
+  verifyAgainstServer(repoRoot).then((result) => process.exit(result.status === "ok" ? 0 : 1))
+} else if (process.env.PI_DEPS_CLI === "1") {
   bootstrap().then((result) => {
     if (result.status === "failed") {
       if (result.missing.length) warn(`缺失/不满足: ${result.missing.join(", ")}`)

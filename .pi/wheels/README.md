@@ -5,38 +5,82 @@
 
 ## 怎么用
 
+两种装法，别混：
+
+| 场景 | 命令 | 网络 |
+|---|---|---|
+| pi 启动自举（默认路径） | 什么都不用做，pi 起来时自动跑 | **只走内网 server**（`indexUrl`），不看本目录 |
+| 手工兜底 / 环境救急 | `python -m pip install --no-index --find-links=.pi\wheels\py312 -r requirements.txt` | 全程不联网，只用本目录 |
+
+`setup.bat` 走第二条：先按解释器 minor 版本找 `py312/` 这种子目录（pip 的 `--find-links`
+不递归，**必须指到子目录**），找不到才转内网镜像。
+
+pi 启动时的自举（`.pi/extensions/deps-bootstrap.ts`）**只认 `.pi/deps.json` 的 `indexUrl`**，
+不回退公网、也不读本目录——依赖统一由内网 server 供应，本目录是另一条要手工维护的路径。
+
+## 内网 server 上必须齐的 20 个文件
+
+server 端要能解析出这**全部 20 个** wheel。只放 7 个直接依赖不够：pip 会顺着依赖树
+去 server 找那 13 个传递依赖，缺一个就可能退化成找 sdist、进而编译失败（离线机没有编译链）。
+
+直接依赖 7 个（`requirements.txt` 里写的）：
+
+    python_pptx-1.0.2-py3-none-any.whl
+    lxml-6.1.3-cp312-cp312-win_amd64.whl
+    pydantic-2.13.5-py3-none-any.whl
+    matplotlib-3.11.2-cp312-cp312-win_amd64.whl
+    numpy-2.4.6-cp312-cp312-win_amd64.whl
+    pillow-12.3.0-cp312-cp312-win_amd64.whl
+    pyyaml-6.0.3-cp312-cp312-win_amd64.whl
+
+传递依赖 13 个（不写进 requirements.txt，pip 顺着依赖树自己取）：
+
+    annotated_types-0.8.0-py3-none-any.whl
+    contourpy-1.3.3-cp312-cp312-win_amd64.whl
+    cycler-0.12.1-py3-none-any.whl
+    fonttools-4.65.0-cp312-cp312-win_amd64.whl
+    kiwisolver-1.5.1-cp312-cp312-win_amd64.whl
+    packaging-26.3-py3-none-any.whl
+    pydantic_core-2.46.5-cp312-cp312-win_amd64.whl
+    pyparsing-3.3.2-py3-none-any.whl
+    python_dateutil-2.9.0.post0-py2.py3-none-any.whl
+    six-1.17.0-py2.py3-none-any.whl
+    typing_extensions-4.16.0-py3-none-any.whl
+    typing_inspection-0.4.4-py3-none-any.whl
+    xlsxwriter-3.2.9-py3-none-any.whl
+
+合计 20 个 / 约 38 MB。**文件名不必一模一样**（server 只按包名+版本+ABI 标签匹配），
+但包名、版本号、`cp312-win_amd64` / `py3-none-any` 这两类标签必须对得上。
+
+> **server 端必须是 pip 能读的索引**，光把 whl 扔进一个目录不够：
+> `http://<ip>:<port>/simple/` 要能列出索引页，`/simple/<包名>/` 要能列出该包的文件链接
+> （PEP 503）。用 `python -m http.server` 手搓或者用 devpi / pypiserver / nginx autoindex
+> 都可以，但目录结构得符合规范。索引页 404 时 pip 报的是
+> `No matching distribution found`，看起来像缺包、实际是索引没建对——所以先用上面的预检确认。
+
+## 怎么确认 server 上真的齐了
+
+在**能连内网 server 的那台离线 PC** 上，仓库根执行：
+
 ```bat
-REM 离线机（3.12）上装依赖，全程不联网
-python -m pip install --no-index --find-links=.pi\wheels\py312 -r requirements.txt
+set PI_DEPS_VERIFY=1
+npx jiti .pi/extensions/deps-bootstrap.ts
 ```
 
-或者直接跑仓库根的 `setup.bat`——它会先按当前解释器的 minor 版本找 `py312/` 这样的子目录；
-pip 的 `--find-links` 不递归，所以**必须指到子目录，不能只指 `.pi/wheels`**。
+只查询、不安装、不改本地环境，退出码 0 = 20 个包全都能取到：
 
-pi 启动时会自动做同一件事（`.pi/extensions/deps-bootstrap.ts`），私有源和解释器版本
-配在 `.pi/deps.json`：`{"python": "3.12", "indexUrl": "http://172.30.39.34:8765/simple"}`。
-
-## 目录里有什么（20 个）
-
-7 个直接依赖（`requirements.txt` 里显式写的）：
-
-    python-pptx  lxml  pydantic  matplotlib  numpy  Pillow  PyYAML
-
-13 个传递依赖（pip 顺着依赖树自己取，不用写进 requirements.txt）：
-
-    annotated-types  contourpy  cycler  fonttools  kiwisolver  packaging
-    pyparsing  python-dateutil  six  typing-extensions  typing-inspection
-    pydantic-core  XlsxWriter
-
-合计约 38 MB。验证方式（在任意有 pip 的机器上跑，不需要 3.12）：
-
-```bat
-python -m pip install --dry-run --no-index --only-binary=:all: ^
-    --find-links=.pi/wheels/py312 --python-version 3.12 --platform win_amd64 ^
-    --target %TEMP%\dryrun -r requirements.txt
+```
+[deps] 预检：向 http://172.30.39.34:8765/simple 查询 7 个直接依赖及其传递依赖（只查询，不安装）...
+[deps] ✓ 预检通过：requirements.txt 的直接依赖与传递依赖都能从内网 server 取到
+[deps]   解析出 20 个包：numpy-2.4.6  pillow-12.3.0  ...
 ```
 
-末行 `Would install` 应该正好列出 20 个包，少一个就说明 wheel 缺了。
+失败会分两种，别混：
+
+- `✗ 预检失败：内网 server 拒绝连接（...）` → 网络/服务问题，不是缺包
+- `✗ 预检失败：内网 server 上没有 xxx` + `内网 server 上缺这些包：...` → 去 server 补包
+
+**不要在本机开发机（非离线 PC）上跑这条**，它连不到内网 IP，只会白等。
 
 ## 补一个包 / 换解释器版本
 
