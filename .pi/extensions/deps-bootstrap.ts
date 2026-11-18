@@ -242,8 +242,24 @@ function checkDeps(repoRoot, python) {
   return { ok: false, missing: [...new Set(missing)], detail }
 }
 
+/**
+ * 本地离线 wheels 目录：`.pi/wheels/py312` 这种按 minor 版本分。
+ * pip 的 --find-links 不递归，所以必须精确到叶子目录，给 `.pi/wheels` 找不到任何包。
+ * 返回目录路径或 null（目录不存在 / 里面没有 .whl / 拿不到解释器版本）。
+ */
+function offlineWheelsDir(repoRoot, python) {
+  const [major, minor] = String(python.version || "").split(".")
+  if (!major || !minor) return null
+  const dir = path.join(repoRoot, ".pi", "wheels", `py${major}${minor}`)
+  try {
+    return fs.readdirSync(dir).some((f) => f.endsWith(".whl")) ? dir : null
+  } catch {
+    return null
+  }
+}
+
 function installDeps(repoRoot, python, config, missing, reqCount) {
-  const args = [
+  const common = [
     ...python.args,
     "-m",
     "pip",
@@ -255,7 +271,34 @@ function installDeps(repoRoot, python, config, missing, reqCount) {
     "--retries",
     "2",
   ]
+  const reqFile = path.join(repoRoot, "requirements.txt")
+  const timeout = config.timeoutMinutes * 60 * 1000
+  const lacks = missing.length
+    ? `缺 ${missing.length}/${reqCount || "?"}：${missing.slice(0, 6).join(", ")}`
+    : "版本不满足"
+  const startedAt = Date.now()
+  const elapsed = () => Math.round((Date.now() - startedAt) / 1000)
 
+  // ① 先试本地 wheels：--no-index 保证一个包都不从网络取，断网也能装完。
+  //    这是离线部署的主路径，顺序不能反——先连网会白等 timeout*retries。
+  const wheels = offlineWheelsDir(repoRoot, python)
+  if (wheels) {
+    const rel = path.relative(repoRoot, wheels).replace(/\\/g, "/")
+    warn(`依赖未就位（${lacks}），先用本地离线包 ${rel} 安装，pip 实时输出如下 ...`)
+    const local = spawnSync(
+      python.cmd,
+      [...common, "--no-index", "--find-links", wheels, "-r", reqFile],
+      { cwd: repoRoot, stdio: ["ignore", "inherit", "inherit"], timeout, windowsHide: true },
+    )
+    if (local.status === 0) return { ok: true, elapsed: elapsed(), detail: "" }
+    if (local.error?.code === "ETIMEDOUT") {
+      return { ok: false, elapsed: elapsed(), detail: `离线安装超过 ${config.timeoutMinutes} 分钟未完成` }
+    }
+    warn(`本地离线包不完整（退出码 ${local.status}），回退网络索引 ...`)
+  }
+
+  // ② 回退网络：私有镜像优先，没配则公网 PyPI
+  const args = [...common]
   if (config.indexUrl) {
     args.push("--index-url", config.indexUrl)
     try {
@@ -265,28 +308,25 @@ function installDeps(repoRoot, python, config, missing, reqCount) {
       /* 非法 URL 交给 pip 自己报错 */
     }
   }
-  args.push("-r", path.join(repoRoot, "requirements.txt"))
+  args.push("-r", reqFile)
 
   const source = config.indexUrl || "默认索引 (PyPI)"
-  const lacks = missing.length ? `缺 ${missing.length}/${reqCount || "?"}：${missing.slice(0, 6).join(", ")}` : "版本不满足"
-  warn(`依赖未就位（${lacks}），从 ${source} 安装，pip 实时输出如下 ...`)
-  const startedAt = Date.now()
+  warn(`从 ${source} 安装，pip 实时输出如下 ...`)
   const result = spawnSync(python.cmd, args, {
     cwd: repoRoot,
     // inherit = pip 的下载进度直接落到当前终端，不攒到最后一次性吐出
     stdio: ["ignore", "inherit", "inherit"],
-    timeout: config.timeoutMinutes * 60 * 1000,
+    timeout,
     windowsHide: true,
   })
-  const elapsed = Math.round((Date.now() - startedAt) / 1000)
 
   if (result.error?.code === "ETIMEDOUT") {
-    return { ok: false, elapsed, detail: `pip install 超过 ${config.timeoutMinutes} 分钟未完成` }
+    return { ok: false, elapsed: elapsed(), detail: `pip install 超过 ${config.timeoutMinutes} 分钟未完成` }
   }
   if (result.status !== 0) {
-    return { ok: false, elapsed, detail: `pip install 退出码 ${result.status}（耗时 ${elapsed}s）` }
+    return { ok: false, elapsed: elapsed(), detail: `pip install 退出码 ${result.status}（耗时 ${elapsed()}s）` }
   }
-  return { ok: true, elapsed, detail: "" }
+  return { ok: true, elapsed: elapsed(), detail: "" }
 }
 
 /**
@@ -330,9 +370,9 @@ function ensureDeps(repoRoot) {
   }
   if (cacheHit) {
     verbose("缓存命中，跳过检查")
-    warn(
-      `✓ 依赖已在位（${reqCount} 个直接依赖，${formatAge(now - (cached.checkedAt || 0))}前已验证；本次跳过重复检查）`,
-    )
+    const age = formatAge(now - (cached.checkedAt || 0))
+    const when = age === "刚刚" ? "刚刚已" : `${age}前已`
+    warn(`✓ 依赖已在位（${reqCount} 个直接依赖，${when}验证；本次跳过重复检查）`)
     return { status: "ok", missing: [] }
   }
   if (force) verbose("PI_DEPS_FORCE=1，忽略缓存重查")
@@ -362,6 +402,11 @@ function ensureDeps(repoRoot) {
   if (!install.ok) {
     warn(`✗ 依赖安装失败：${install.detail}`)
     warn(`  手动修复：${python.executable} -m pip install -r requirements.txt`)
+    if (!offlineWheelsDir(repoRoot, python)) {
+      // 离线机的常见死因：wheel 被 .gitignore 排除，git clone 下来是空目录，pip 又连不上网
+      warn(`  离线机注意：.pi/wheels/py${python.version.replace(".", "")} 下没有 wheel，`)
+      warn(`  git 不跟踪 wheel 文件——需把开发机的 .pi/wheels 整个目录拷过来，或先跑 setup.bat`)
+    }
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,

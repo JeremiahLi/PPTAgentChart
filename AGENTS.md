@@ -55,18 +55,25 @@
 
 | 时机 | 入口 | 行为 |
 |---|---|---|
-| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定 → 缺则真装（pip 输出**直通终端**，逐包进度实时可见）→ 结果缓存 24h；**每次启动必打一行状态**，不吃静默 |
+| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定 → 缺则**先 `--no-index --find-links .pi/wheels/py3XY` 离线装**，装不上再回退镜像 / PyPI（pip 输出**直通终端**，逐包进度实时可见）→ 结果缓存 24h；**每次启动必打一行状态**，不吃静默 |
 | 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走镜像 |
 | 换机 / 补包 | `.pi/wheels/README.md` | `pip download` 到对应版本子目录 |
 
-**启动时终端会看到的六种行**（都在 stderr，前缀 `[deps]`）：
+> **离线部署唯一真正的坑：`.gitignore` 排除了 `.pi/wheels/*`（只留 README.md）。**
+> 所以离线机若用 `git clone` 取代码，`.pi/wheels/py312/` 是**空目录**，自举的离线分支拿不到包、
+> 网络分支又连不上，只能失败——然后 pi 照常启动，直到生成 PPT 时 `import matplotlib` 才炸，
+> 报错点完全指错了地方。**跨机部署必须把 `.pi/wheels` 整个目录拷过去**（U 盘 / 共享盘 / 压缩包），
+> 或先在离线机跑一遍 `setup.bat`。自举失败时现在会直接把这句话打出来。
+
+**启动时终端会看到的七种行**（都在 stderr，前缀 `[deps]`）：
 
 ```
 ✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；本次跳过重复检查）   ← 24h 缓存命中，没重跑
 ✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10，无需下载）    ← 真跑过 pip 检查
-依赖未就位（缺 3/7：numpy, pillow, ...），从 <源> 安装，pip 实时输出如下 ...  ← 后面跟 pip 的下载进度
+依赖未就位（缺 3/7：numpy, pillow, ...），先用本地离线包 .pi/wheels/py312 安装 ...  ← 离线优先
+本地离线包不完整（退出码 1），回退网络索引 ...                    ← 最后一句是 "从 <源> 安装"
 ✓ 依赖安装完成（耗时 42s，复检通过 · <解释器路径>）
-✗ 依赖安装失败：pip install 退出码 1（耗时 4s） + 手动修复命令
+✗ 依赖安装失败：pip install 退出码 1（耗时 4s） + 手动修复命令 + 离线机提示
 ! 未找到 CPython 3.12 解释器，本次跳过依赖检查，依赖不会被安装   ← 每次都打，不吃缓存
 ```
 
