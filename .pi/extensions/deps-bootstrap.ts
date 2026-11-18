@@ -78,11 +78,17 @@
  */
 
 import { spawn, spawnSync } from "node:child_process"
-import net from "node:net"
-import http from "node:http"
-import https from "node:https"
-import fs from "node:fs"
-import path from "node:path"
+// 全部用命名空间导入，不用 default 导入：`node:net` 这类内置模块**没有 default export**，
+// 在原生 ESM 下 `import net from "node:net"` 会直接抛
+// "does not provide an export named 'default'"，而且报错发生在模块加载阶段——
+// factory 根本不会被调用，widget 也不会画，现象就是"这个扩展毫无反应"。
+// jiti 转 CJS 时能 interop 掉，所以开发机上用 jiti 跑是好的，换台机器换了加载路径就未必。
+// 命名空间导入在两种加载方式下都合法，是这里唯一安全写法。
+import * as net from "node:net"
+import * as http from "node:http"
+import * as https from "node:https"
+import * as fs from "node:fs"
+import * as path from "node:path"
 
 const CONFIG_FILE = ".pi/deps.json"
 const STATE_FILE = ".pi/work/.deps-state.json"
@@ -437,6 +443,11 @@ function renderStatus() {
       ]
     case "no-pip":
       return ["! pip 太老（需 >= 22.2），无法检查依赖，建议先升级 pip"]
+    case "skipped":
+      // 跳过也要留痕：静默跳过等于让用户以为扩展坏了。
+      // 但要克制——findRepoRoot 没找到仓库根（cwd 不对）时也走这里，
+      // 而那种情况下用户并不在项目里工作，不该在首页挂一行常驻提示。
+      return s.note ? [`- 依赖自举跳过：${clip(s.note, 64)}`] : []
     default:
       return []
   }
@@ -1352,21 +1363,27 @@ async function ensureDeps(repoRoot) {
 
 async function bootstrap() {
   if (process.env.PI_DEPS_SKIP === "1") {
-    verbose("PI_DEPS_SKIP=1，跳过")
-    update({ phase: "skipped" })
+    // 这一条必须能看见：应急开关静默生效时，用户唯一看到的就是"扩展毫无反应"，
+    // 会误判成扩展没加载。所以 skip 也要留一行 stderr + 一行 widget。
+    warn("PI_DEPS_SKIP=1，已显式跳过依赖检查（取消该环境变量后重开 pi 才会检查）")
+    update({ phase: "skipped", note: "PI_DEPS_SKIP=1 显式跳过" })
     return { status: "skipped", missing: [] }
   }
   const repoRoot = findRepoRoot(process.cwd())
   if (!repoRoot) {
-    verbose("当前目录及上 3 层既没有 requirements.txt 也没有 .pi/deps.json，跳过")
-    update({ phase: "skipped" })
+    // cwd 不在仓库内是最隐蔽的失败：依赖清单找不到 → 不检查 → 首页一片干净，
+    // 和"扩展没加载"完全同徵。所以把 cwd 一起报出来，让原因当场可见。
+    warn(`当前目录不在仓库根（向上 3 层没找到 requirements.txt / .pi/deps.json），跳过依赖检查`)
+    warn(`  cwd = ${process.cwd()}`)
+    warn("  从仓库根目录启动 pi，或把 pi 的工作目录切到仓库根")
+    update({ phase: "skipped", note: `cwd 不在仓库根：${process.cwd()}` })
     return { status: "skipped", missing: [] }
   }
   const config = readConfig(repoRoot)
   const reqFile = reqFileOf(repoRoot, config)
   if (!fs.existsSync(reqFile)) {
-    verbose(`${reqFile} 不存在，跳过（没有依赖清单就不该管）`)
-    update({ phase: "skipped" })
+    warn(`${reqFile} 不存在，跳过（没有依赖清单就不该管）`)
+    update({ phase: "skipped", note: `依赖清单不存在：${reqFile}` })
     return { status: "skipped", missing: [] }
   }
   gateEnabled = config.gate
@@ -1420,6 +1437,11 @@ function blockReason() {
 // 里的 widget 显示——这是唯一能在首页看见的通道。
 // ---------------------------------------------------------------------------
 export default function depsBootstrap(pi) {
+  // 这一行是"扩展是否真的被加载"的唯一硬证据：模块加载失败时 factory 压根不会被调用，
+  // 任何内部日志都不会出现。所以先证明自己活着，再证明依赖检查跑没跑。
+  // （TUI 里它会被重绘盖掉，但 pi --help / CLI 模式 / 重定向下都在。）
+  warn(`扩展已加载，cwd=${process.cwd()}`)
+
   let finish
   const done = new Promise((resolve) => {
     finish = resolve
