@@ -52,8 +52,10 @@
  *
  * 这个脚本是**完全独立的**：一个 .ts 文件丢进任意 pi 项目的 `.pi/extensions/`
  * （或 `~/.pi/agent/extensions/` 全局）就能工作——不需要 deps.json、不需要额外配置，
- * 内网地址与解释器版本都在文件里。唯一的运行时输入是仓库根的 requirements.txt
- * （依赖清单）与"当前目录往上 3 层内有没有 `.pi` / requirements.txt"（定位仓库根）。
+ * 内网地址与解释器版本都在文件里。唯一的运行时输入是仓库根的 requirements.txt。
+ * 仓库根怎么找：**先按本文件自身位置上溯两级**（`<repo>/.pi/extensions/` → `<repo>`），
+ * 该处有清单才采信；否则退回"cwd 往上 3 层找 requirements.txt"。
+ * 不认 `.pi` 目录当锚点——`~/.pi` 是 pi 的全局配置目录，认它会把家目录判成仓库根。
  *
  * 两套输出通道，两条都要留着：
  *   1) TUI widget（首页可见）—— `session_start` + `ctx.ui.setWidget("deps-status", ..., belowEditor)`。
@@ -89,6 +91,7 @@ import * as http from "node:http"
 import * as https from "node:https"
 import * as fs from "node:fs"
 import * as path from "node:path"
+import * as url from "node:url"
 
 const STATE_FILE = ".pi/work/.deps-state.json"
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
@@ -463,7 +466,7 @@ function renderStatus() {
       return ["! pip 太老（需 >= 22.2），无法检查依赖，建议先升级 pip"]
     case "skipped":
       // 跳过也要留痕：静默跳过等于让用户以为扩展坏了。
-      // 但要克制——findRepoRoot 没找到仓库根（cwd 不对）时也走这里，
+      // 但要克制——locateRepoRoot 没找到仓库根（cwd 不对）时也走这里，
       // 而那种情况下用户并不在项目里工作，不该在首页挂一行常驻提示。
       return s.note ? [`- 依赖自举跳过：${clip(s.note, 64)}`] : []
     default:
@@ -472,22 +475,63 @@ function renderStatus() {
 }
 
 /**
- * 从起始目录向上找项目根：有 requirements.txt 或 `.pi` 目录的那一层。
- * 只上溯 3 层——再往上容易跨进父目录的另一个无关项目，把依赖装错地方。
- * 两个锚点都认：`.pi` 是本文件自己住的地方（本项目必然有），requirements.txt
- * 是依赖清单（脚本要读它）。任一存在都足以定位根目录。
+ * 本扩展自身所在目录。
+ * pi 用 jiti 把 ESM 转 CJS 加载，此时 `__dirname` 可用（本项目 log-capture 扩展同样依赖它）；
+ * 若将来改走原生 ESM，`__dirname` 消失，退回 `import.meta.url`。
+ * 两条路都拿不到时返回空串，定位逻辑自动退回"按 cwd 上溯"。
  */
-function findRepoRoot(start) {
+const SELF_DIR = (function () {
+  try {
+    if (typeof __dirname === "string" && __dirname) return __dirname
+  } catch {
+    /* 原生 ESM 下没有 __dirname */
+  }
+  try {
+    const meta: any = import.meta
+    if (meta && typeof meta.url === "string" && meta.url.startsWith("file:")) {
+      return path.dirname(url.fileURLToPath(meta.url))
+    }
+  } catch {
+    /* jiti 转 CJS 时 import.meta 可能不存在 */
+  }
+  return ""
+})()
+
+/**
+ * 定位仓库根。两个来源，按可靠性排序：
+ *
+ *   1) **扩展自身位置（首选）**：本文件住在 `<repo>/.pi/extensions/` 下，上溯两级就是仓库根。
+ *      这条路与 cwd 无关——从家目录、从桌面、从任何目录启动 pi 都能找对。
+ *      但必须验证该目录下真有 requirements.txt 才采信：把本文件拷到
+ *      `~/.pi/agent/extensions/` 全局用时，上溯两级是 `~/.pi`，那里没有清单；
+ *      采信它等于重演"家目录冒充仓库根"的老问题。
+ *
+ *   2) **cwd 向上（兜底）**：只认 requirements.txt 一个锚点，最多 3 层。
+ *      不再认 `.pi` 目录——`~/.pi` 是 pi 的全局配置目录，认它会让 `C:\Users\me`
+ *      （以及 Desktop / Downloads 等任何 home 子目录）冒充仓库根，报出来的
+ *      "依赖清单不存在"整个指向错误目录（2026-11-18 用户实际踩到这一点）。
+ *
+ * 返回 { root, via, tried }；tried 记录逐层试过的目录，失败时摆出来，
+ * 否则"哪一层对不上"用户根本看不出来。
+ */
+function locateRepoRoot(start) {
+  const selfRoot = SELF_DIR ? path.resolve(SELF_DIR, "..", "..") : ""
+  if (selfRoot && fs.existsSync(path.join(selfRoot, CONFIG.requirementsFile))) {
+    return { root: selfRoot, via: "扩展自身位置", tried: [selfRoot] }
+  }
+
+  const tried = []
   let dir = start
   for (let i = 0; i < 3; i += 1) {
-    if (fs.existsSync(path.join(dir, CONFIG.requirementsFile)) || fs.existsSync(path.join(dir, ".pi"))) {
-      return dir
+    tried.push(dir)
+    if (fs.existsSync(path.join(dir, CONFIG.requirementsFile))) {
+      return { root: dir, via: "当前目录向上", tried }
     }
     const parent = path.dirname(dir)
     if (parent === dir) break
     dir = parent
   }
-  return null
+  return { root: null, via: "", tried }
 }
 
 /**
@@ -1373,16 +1417,20 @@ async function bootstrap() {
     update({ phase: "skipped", note: "PI_DEPS_SKIP=1 显式跳过" })
     return { status: "skipped", missing: [] }
   }
-  const repoRoot = findRepoRoot(process.cwd())
+  const located = locateRepoRoot(process.cwd())
+  const repoRoot = located.root
   if (!repoRoot) {
     // cwd 不在项目内是隐蔽的失败：什么都不做 → 首页一片干净，
-    // 和"扩展没加载"完全同徵。所以把 cwd 一起报出来，让原因当场可见。
-    warn(`当前目录不在项目内（向上 3 层没找到 requirements.txt / .pi 目录），跳过依赖检查`)
+    // 和"扩展没加载"完全同徵。所以把 cwd、扩展自身位置、逐层试过的目录一起报出来。
+    warn(`当前目录不在项目内（向上 3 层没找到 ${CONFIG.requirementsFile}），跳过依赖检查`)
     warn(`  cwd = ${process.cwd()}`)
-    warn("  从项目根目录启动 pi，或把 pi 的工作目录切到项目根")
+    warn(`  扩展自身位置 = ${SELF_DIR || "（取不到，加载器没给 __dirname / import.meta.url）"}`)
+    warn(`  试过的目录：${located.tried.join(" → ") || "（无）"}`)
+    warn("  从项目根目录启动 pi，或把本扩展放回 <项目根>/.pi/extensions/")
     update({ phase: "skipped", note: `cwd 不在项目内：${process.cwd()}` })
     return { status: "skipped", missing: [] }
   }
+  verbose(`仓库根 ${repoRoot}（来自${located.via}${SELF_DIR ? `；扩展自身位置 ${SELF_DIR}` : ""}）`)
   const config = readConfig()
   // 清单是依赖的唯一真相，没有它就没有可检查的东西。这算配置缺失而不是"依赖已就位"，
   // 所以显式报出来并跳过——静默跳过会被误读成"检查过了没问题"。
@@ -1513,11 +1561,14 @@ export default function depsBootstrap(pi) {
 // setup.bat 与人工排查都走这两条
 // ---------------------------------------------------------------------------
 if (process.env.PI_DEPS_VERIFY === "1") {
-  const repoRoot = findRepoRoot(process.cwd())
-  if (!repoRoot) {
-    warn("! 当前目录及上 3 层没有 requirements.txt / .pi 目录，不在项目内，无需预检")
+  const located = locateRepoRoot(process.cwd())
+  if (!located.root) {
+    warn(`! cwd 与扩展自身位置都找不到 ${CONFIG.requirementsFile}，不在项目内，无需预检`)
+    warn(`  cwd = ${process.cwd()}`)
+    warn(`  试过的目录：${located.tried.join(" → ") || "（无）"}`)
     process.exit(0)
   }
+  const repoRoot = located.root
   if (!fs.existsSync(reqFileOf(repoRoot))) {
     warn(`✗ 依赖清单不存在：${reqFileOf(repoRoot)}，无法预检`)
     process.exit(1)

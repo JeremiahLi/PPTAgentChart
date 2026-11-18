@@ -168,7 +168,12 @@ pi 项目的 `.pi/extensions/`（放 `~/.pi/agent/extensions/` 则全局生效�
   `blockOnMissing`，现在全部并入 `CONFIG`。环境变量 `PI_PIP_INDEX_URL`、
   `PI_DEPS_PY_VERSION`、`PI_DEPS_TIMEOUT_MIN` 也都移除了——地址"固定不变"就是这么落实的，
   不存在"某台机器上被环境变量改了却不知道"的情况。
-- 仓库根靠**向上 3 层内的 `requirements.txt` 或 `.pi` 目录**识别（任一存在即可）。
+- 仓库根**先按扩展自身位置上溯两级**认定（`<repo>/.pi/extensions/` → `<repo>`），
+  且该目录下必须真有 `requirements.txt` 才采信——这样 cwd 在哪都不影响（从家目录启动也能找对）；
+  把 .ts 拷到 `~/.pi/agent/extensions/` 全局用时该位置没有清单，自动退回兜底。
+  兜底才是**从 cwd 向上 3 层只找 `requirements.txt`**。
+  **不认 `.pi` 目录当锚点**：`~/.pi` 是 pi 的全局配置目录，认它会把 `C:\Users\me`
+  （及任何 home 子目录）判成仓库根，报出误导性的"依赖清单不存在"（2026-11-18 踩过）。
 - 清单不存在时**显式报错并跳过**（`✗ 依赖清单不存在：…`），不静默当作"已就位"。
 - 状态缓存写在项目自己的 `.pi/work/.deps-state.json`，键含**清单内容指纹**（不是 mtime，
   免得 git checkout 让 mtime 变、内容没变却失效），不会跨项目串。
