@@ -516,3 +516,25 @@ flow 每步 desc ≥16、hierarchy node.desc ≥20、panel_2col 每模块 summar
 - **几何改动后跑 `python .pi/renderer/budgets.py --selfcheck`**：15 个代表性配置
   "照预算写满 → 真实校验必放行"，几何一变它就是回归线。
 
+
+## 30. 扩展要在 pi 首页说话，只能走 `ctx.ui`，不能 `process.stderr`
+
+（2026-11-18，"首页看不到依赖状态"）`deps-bootstrap.ts` 原来把检查/安装结果全写成
+`process.stderr.write("[deps] ...")`。CLI 模式看得见，**pi 里一个字都看不见**：
+pi 进 interactive 模式后切 alternate screen 并重绘，启动期写进 stderr 的内容全被盖掉。
+用户看到的是一张干净的首页，既不知道检查没检查，也不知道缺不缺包，直到生成 PPT 时
+`import matplotlib` 才炸。四条别改回去：
+
+- **用户可见的反馈走 `ctx.ui.setWidget` / `setStatus`**：本仓库用
+  `setWidget("deps-status", lines, { placement: "belowEditor" })`（`aboveEditor` 已被
+  `pptagent-welcome` 占了）。stderr 那条保留，但只当日志用。
+- **工厂函数必须同步返回**：`export default function (pi)`，长任务丢后台跑。
+  写成 `export default async function` 且 await 长任务，pi 会等它——启动期间 TUI 还没
+  渲染，用户只看到空白，比慢更难忍。用 `session_start` 里 `await done`（90s 上限）兜住
+  "依赖没装好就被拿去干活"。
+- **长任务用 `spawn` 不用 `spawnSync`**：`spawnSync` 阻塞事件循环，检查那 11 秒里
+  widget 一次都刷不出来，"正在检索"变成假话。全部改成 `runStreaming`（异步 + 累积输出）。
+- **`setTimeout` 的 ms 参数名写错会当场杀进程**：`runStreaming` 收的是 `timeoutMs`，
+  某处误写成 `timeout` → `setTimeout(fn, undefined)` 按 0 处理 → 子进程刚起来就被
+  KILL，输出为空、退出码非 0，检查**永远判失败**，还会误触发联网安装。现在函数内
+  对非有限值兜底 120000ms。

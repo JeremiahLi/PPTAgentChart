@@ -42,6 +42,12 @@
  *   PI_DEPS_VERBOSE=1    打印判定过程
  *   PI_DEPS_CLI=1        命令行模式（检查/安装后退出，不挂到 pi 上）
  *
+ * 两套输出通道，两条都要留着：
+ *   1) TUI widget（首页可见）—— `session_start` + `ctx.ui.setWidget("deps-status", ..., belowEditor)`。
+ *      **这个是给用户看的**。pi 进 interactive 模式会切 alternate screen 重绘，stderr 全被盖掉；
+ *      2026-11-18 就是因此首页一片干净，用户压根不知道依赖检没检查。
+ *   2) stderr `[deps] ...` —— CLI 模式、print 模式、日志重定向、人工排查用。
+ *
  * 缓存为什么留：`pip install --dry-run --no-index` 实测 11 秒，每次启动都跑等于每次多等 11 秒；
  * 但缓存命中时提示里必须写清"X 前已验证、本次跳过"，不能让人误以为刚查过。
  * 要立刻真查一次：`PI_DEPS_FORCE=1 pi`。
@@ -66,6 +72,99 @@ function verbose(msg) {
 
 function warn(msg) {
   process.stderr.write(`[deps] ${msg}\n`)
+}
+
+// ---------------------------------------------------------------------------
+// TUI 状态通道
+//
+// 为什么必须走 ctx.ui.setWidget 而不是 process.stderr：pi 进入 interactive 模式后
+// 会切到 alternate screen 并重绘，启动期间写到 stderr 的 `[deps] ...` 全部被盖掉——
+// 用户首页看到的就是一片干净，压根不知道依赖检没检查（2026-11-18 实地确认）。
+// 所以把同一份状态同时维护成 snapshot，由 session_start 里的 widget 渲染出来。
+// stderr 那条照样保留：CLI 模式、print 模式、日志重定向都还在用。
+// ---------------------------------------------------------------------------
+const snapshot = {
+  phase: "init", // init | checking | installing | ok | failed | no-python | no-pip | skipped
+  reqCount: 0,
+  missing: [],
+  version: null,
+  wantVersion: null,
+  detail: "",
+  hint: "",
+  note: "",
+  progress: "",
+}
+
+let redraw = null
+
+function update(patch) {
+  Object.assign(snapshot, patch)
+  if (!redraw) return
+  try {
+    redraw()
+  } catch {
+    /* TUI 已经关掉，忽略 */
+  }
+}
+
+/** 按显示宽度截断，避免把 widget 撑成不可读的长行。 */
+function clip(text, width) {
+  const s = String(text || "")
+  let w = 0
+  let out = ""
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)
+    const wide =
+      (cp >= 0x1100 && cp <= 0x115f) ||
+      (cp >= 0x2e80 && cp <= 0x303e) ||
+      (cp >= 0x3041 && cp <= 0x33ff) ||
+      (cp >= 0x3400 && cp <= 0x4dbf) ||
+      (cp >= 0x4e00 && cp <= 0x9fff) ||
+      (cp >= 0xa000 && cp <= 0xa4cf) ||
+      (cp >= 0xac00 && cp <= 0xd7a3) ||
+      (cp >= 0xf900 && cp <= 0xfaff) ||
+      (cp >= 0xfe30 && cp <= 0xfe4f) ||
+      (cp >= 0xff00 && cp <= 0xff60) ||
+      (cp >= 0xffe0 && cp <= 0xffe6) ||
+      (cp >= 0x20000 && cp <= 0x3fffd)
+    w += wide ? 2 : 1
+    if (w > width) return `${out}…`
+    out += ch
+  }
+  return out
+}
+
+/** 首页 widget 的内容：1-2 行，任何阶段都有一句能看懂的话。 */
+function renderStatus() {
+  const s = snapshot
+  switch (s.phase) {
+    case "init":
+    case "checking":
+      return [`⏳ 正在检索开源依赖（共 ${s.reqCount || "?"} 个直接依赖 + 传递依赖）...`]
+    case "installing":
+      return [
+        `⏳ 依赖未就位（缺 ${s.missing.length || "?"}/${s.reqCount || "?"}），正在从内网 server 下载安装...`,
+        `   ${clip(s.progress || "等待 pip 输出首个包...", 60)}`,
+      ]
+    case "ok":
+      return [
+        `✓ 依赖已就位（${s.reqCount}/${s.reqCount} 直接依赖 · CPython ${s.version || "?"}）${s.note || ""}`,
+      ]
+    case "failed":
+      return [
+        `✗ 依赖未就位：${clip(s.detail, 56)}`,
+        `   ${clip(s.hint || "跑 PI_DEPS_CLI=1 看详细原因，或 PI_DEPS_VERBOSE=1 看判定过程", 60)}`,
+      ]
+    case "no-python":
+      return [
+        `! 未找到 CPython ${s.wantVersion || ""} 解释器，依赖未检查也未安装`,
+        `   py -0 查看本机已装版本；装好后重开 pi`,
+      ]
+    case "no-pip":
+      return ["! pip 太老（需 >= 22.2），无法检查依赖，建议先升级 pip"]
+    default:
+      return []
+  }
 }
 
 /**
@@ -120,10 +219,17 @@ function run(cmd, args, opts = {}) {
 
 /**
  * 流式执行：边跑边把子进程输出转发到 stderr，同时累积全文供事后解析。
- * 为什么不用 spawnSync + stdio:inherit——那样拿不到任何文本，"失败原因"就只能报退出码。
- * 用 pipe 手动转发，实时性和可解析性同时拿到。
+ * 为什么不用 spawnSync + stdio:inherit——那样拿不到任何文本，"失败原因"就只能报退出码；
+ * 更要紧的是 spawnSync 会**阻塞事件循环**，TUI 的 widget 在检查/下载期间一次都刷不出来，
+ * 用户看到的"正在检索"就是一句假话。
+ *
+ * silent：只累积不转发（检查阶段用，pip 的 dry-run 日志对用户没价值）
+ * onLine：每读到一段输出回调一次，供安装阶段把最新进度顶到 widget 上
  */
-function runStreaming(cmd, args, { cwd, timeoutMs }) {
+function runStreaming(cmd, args, { cwd, timeoutMs = 120000, silent = false, onLine = null }) {
+  // 兜底：timeoutMs 传错/漏传时 setTimeout(fn, undefined) 会当 0 处理，
+  // 子进程刚起来就被杀掉、输出为空——2026-11-18 就是因此在检查阶段永远判失败。
+  const limit = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 120000
   return new Promise((resolve) => {
     let child
     try {
@@ -143,7 +249,7 @@ function runStreaming(cmd, args, { cwd, timeoutMs }) {
       } catch {
         /* 已经退出 */
       }
-    }, timeoutMs)
+    }, limit)
     const finish = (payload) => {
       if (settled) return
       settled = true
@@ -154,7 +260,15 @@ function runStreaming(cmd, args, { cwd, timeoutMs }) {
     const forward = (chunk) => {
       const text = chunk.toString("utf8")
       output += text
-      process.stderr.write(text)
+      if (!silent) process.stderr.write(text)
+      if (onLine) {
+        // pip 的进度条用 \r 原地刷新，取最后一段才有意义
+        const piece = text
+          .split(/[\r\n]+/)
+          .filter((s) => s.trim())
+          .pop()
+        if (piece) onLine(piece.trim())
+      }
     }
     child.stdout?.on("data", forward)
     child.stderr?.on("data", forward)
@@ -249,12 +363,14 @@ function formatAge(ms) {
   return `${Math.round(hours / 24)} 天`
 }
 
-/** pip 是否支持 --dry-run（>= 22.2）。老版本无法做无副作用检查。 */
-function pipSupportsDryRun(python) {
-  const result = run(python.cmd, [...python.args, "-m", "pip", "install", "--help"], {
-    timeout: 60000,
-  })
-  return `${result.stdout || ""}${result.stderr || ""}`.includes("--dry-run")
+/** pip 是否支持 --dry-run（>= 22.2）。老版本无法做无副作用检查。异步跑，别阻塞 TUI 重绘。 */
+async function pipSupportsDryRun(python) {
+  const result = await runStreaming(
+    python.cmd,
+    [...python.args, "-m", "pip", "install", "--help"],
+    { timeoutMs: 60000, silent: true },
+  )
+  return String(result.output || "").includes("--dry-run")
 }
 
 /**
@@ -278,10 +394,11 @@ function extractMissing(output) {
 
 /**
  * 用 pip 自己做满足性检查：--no-index 保证完全不联网，只比对已装环境。
+ * 异步跑（不阻塞事件循环），检查期间 widget 才能刷新出"正在检索"。
  * 返回 { ok, missing: string[], detail }。
  */
-function checkDeps(repoRoot, python) {
-  const result = run(
+async function checkDeps(repoRoot, python) {
+  const result = await runStreaming(
     python.cmd,
     [
       ...python.args,
@@ -295,12 +412,12 @@ function checkDeps(repoRoot, python) {
       "-r",
       path.join(repoRoot, "requirements.txt"),
     ],
-    { timeout: CHECK_TIMEOUT_MS, cwd: repoRoot },
+    { timeoutMs: CHECK_TIMEOUT_MS, cwd: repoRoot, silent: true },
   )
 
-  if (result.status === 0) return { ok: true, missing: [], detail: "" }
+  if (result.code === 0) return { ok: true, missing: [], detail: "" }
 
-  const output = `${result.stderr || ""}\n${result.stdout || ""}`
+  const output = result.output || ""
   // 只留最后几行：pip 的报错价值在尾部
   const detail = output.trim().split(/\r?\n/).slice(-4).join("\n")
   return { ok: false, missing: extractMissing(output), detail }
@@ -421,9 +538,25 @@ async function installDeps(repoRoot, python, config, missing, reqCount) {
 
   warn(`依赖未就位（${lacks}），开始从内网 server 下载：${config.indexUrl}`)
   warn(`pip 实时输出如下（下载进度即时刷新）...`)
+  update({ phase: "installing", missing, progress: "" })
+
+  // 把 pip 的最新一行顶到 widget 上。必须节流：进度条用 \r 高频刷新，
+  // 每次 chunk 都重绘会让 TUI 抖得看不清。
+  let lastPaint = 0
+  const onLine = (line) => {
+    // 只留真正体现进度的行：pip 还会吐 Looking in indexes / Requirement already satisfied
+    // 这类噪音，顶到 widget 上等于没信息
+    if (!/Downloading|Collecting|Installing collected|Processing|Using cached|Building wheel/i.test(line)) return
+    const now = Date.now()
+    if (now - lastPaint < 400) return
+    lastPaint = now
+    update({ progress: line })
+  }
+
   const result = await runStreaming(python.cmd, args, {
     cwd: repoRoot,
     timeoutMs: config.timeoutMinutes * 60 * 1000,
+    onLine,
   })
 
   if (result.timedOut) {
@@ -487,7 +620,7 @@ async function verifyAgainstServer(repoRoot) {
     warn("✗ 未配置内网 server 地址（.pi/deps.json 的 indexUrl），无法预检")
     return { status: "no-index", missing: [] }
   }
-  if (!pipSupportsDryRun(python)) {
+  if (!(await pipSupportsDryRun(python))) {
     warn("! pip 不支持 --dry-run（需 >= 22.2），无法预检")
     return { status: "no-pip", missing: [] }
   }
@@ -556,6 +689,7 @@ async function ensureDeps(repoRoot) {
   const cached = readState(repoRoot)
   const now = Date.now()
   const force = process.env.PI_DEPS_FORCE === "1"
+  update({ phase: "checking", reqCount, wantVersion: config.python, missing: [] })
 
   const python = resolvePython(config)
   if (!python) {
@@ -564,6 +698,7 @@ async function ensureDeps(repoRoot) {
     warn(`! 未找到${hint} 解释器，本次跳过依赖检查，依赖不会被安装`)
     warn(`  py -0 查看本机已装版本；装好后重开 pi 即生效（PI_DEPS_SKIP=1 可静音）`)
     writeState(repoRoot, { status: "no-python", checkedAt: now, requirementsMtimeMs: reqMtime })
+    update({ phase: "no-python", wantVersion: config.python })
     return { status: "no-python", missing: [] }
   }
 
@@ -580,18 +715,21 @@ async function ensureDeps(repoRoot) {
     const age = formatAge(now - (cached.checkedAt || 0))
     const when = age === "刚刚" ? "刚刚已" : `${age}前已`
     warn(`✓ 依赖已在位（${reqCount} 个直接依赖，${when}验证；本次跳过重复检查）`)
+    update({ phase: "ok", version: python.version, note: `（${when}验证）` })
     return { status: "ok", missing: [] }
   }
   if (force) verbose("PI_DEPS_FORCE=1，忽略缓存重查")
 
-  if (!pipSupportsDryRun(python)) {
+  if (!(await pipSupportsDryRun(python))) {
     warn("! 目标环境的 pip 不支持 --dry-run（需 >= 22.2），无法检查依赖，建议先升级 pip")
     writeState(repoRoot, { status: "no-pip", checkedAt: now, requirementsMtimeMs: reqMtime })
+    update({ phase: "no-pip" })
     return { status: "no-pip", missing: [] }
   }
 
   warn("检查依赖是否就位（本地比对，不联网，约 10 秒）...")
-  const first = checkDeps(repoRoot, python)
+  update({ phase: "checking", detail: "比对本地已装环境" })
+  const first = await checkDeps(repoRoot, python)
   if (first.ok) {
     writeState(repoRoot, {
       status: "ok",
@@ -601,10 +739,12 @@ async function ensureDeps(repoRoot) {
       checkedAt: now,
     })
     warn(`✓ 依赖已在位（${reqCount} 个直接依赖全部满足 · CPython ${python.version}，无需下载）`)
+    update({ phase: "ok", version: python.version, note: "" })
     return { status: "ok", missing: [] }
   }
 
   verbose(`未满足: ${first.missing.join(", ") || first.detail}`)
+  update({ phase: "installing", missing: first.missing })
   const install = await installDeps(repoRoot, python, config, first.missing, reqCount)
   if (!install.ok) {
     warn(`✗ 依赖安装失败：${install.detail}`)
@@ -617,12 +757,19 @@ async function ensureDeps(repoRoot) {
       checkedAt: now,
       detail: install.detail,
     })
+    update({
+      phase: "failed",
+      detail: install.detail,
+      // 完整重试命令留在 stderr（终端/日志里能复制），widget 只放一句怎么查
+      hint: "详细原因与重试命令见终端 [deps] 输出，或跑 PI_DEPS_CLI=1 排查",
+    })
     return { status: "failed", missing: first.missing }
   }
 
-  const second = checkDeps(repoRoot, python)
+  const second = await checkDeps(repoRoot, python)
   if (!second.ok) {
-    warn(`✗ 下载完成但复检仍不满足：${second.missing.join(", ") || second.detail}`)
+    const detail = `下载完成但复检仍不满足：${second.missing.join(", ") || second.detail}`
+    warn(`✗ ${detail}`)
     warn("  说明内网 server 上的包版本与 requirements.txt 不一致，或传递依赖被裁掉了")
     writeState(repoRoot, {
       status: "failed",
@@ -631,6 +778,11 @@ async function ensureDeps(repoRoot) {
       requirementsMtimeMs: reqMtime,
       checkedAt: now,
       detail: second.detail,
+    })
+    update({
+      phase: "failed",
+      detail,
+      hint: "核对内网 server 上的包版本与 requirements.txt 是否一致",
     })
     return { status: "failed", missing: second.missing }
   }
@@ -644,32 +796,81 @@ async function ensureDeps(repoRoot) {
   })
   warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，复检通过 · CPython ${python.version}）`)
   if (install.installed) warn(`  本次装入：${install.installed}`)
+  update({ phase: "ok", version: python.version, note: `（本次装入 ${install.elapsed}s）` })
   return { status: "installed", missing: [] }
 }
 
 async function bootstrap() {
   if (process.env.PI_DEPS_SKIP === "1") {
     verbose("PI_DEPS_SKIP=1，跳过")
+    update({ phase: "skipped" })
     return { status: "skipped", missing: [] }
   }
   const repoRoot = findRepoRoot(process.cwd())
   if (!repoRoot || !fs.existsSync(path.join(repoRoot, "requirements.txt"))) {
     verbose("当前目录及上 3 层没有 requirements.txt，跳过")
+    update({ phase: "skipped" })
     return { status: "skipped", missing: [] }
   }
   return ensureDeps(repoRoot)
 }
 
 // ---------------------------------------------------------------------------
-// pi 扩展入口：async 工厂 → pi 会 await 它再继续启动
+// pi 扩展入口
+//
+// 工厂**同步**返回：pi 才不会在启动阶段被卡住（启动阶段 TUI 还没渲染，卡在那里
+// 用户只看到一片空白，比慢更难忍）。检查/安装在后台跑，进度通过 session_start
+// 里的 widget 显示——这是唯一能在首页看见的通道。
 // ---------------------------------------------------------------------------
-export default async function depsBootstrap(_pi) {
-  try {
-    await bootstrap()
-  } catch (err) {
-    // 自举本身出错绝不能拦住 pi 启动
-    warn(`自举异常（已忽略）：${err?.message || err}`)
-  }
+export default function depsBootstrap(pi) {
+  let finish
+  const done = new Promise((resolve) => {
+    finish = resolve
+  })
+
+  bootstrap()
+    .catch((err) => {
+      // 自举本身出错绝不能拦住 pi 启动
+      warn(`自举异常（已忽略）：${err?.message || err}`)
+      update({ phase: "failed", detail: `自举异常：${err?.message || err}` })
+    })
+    .finally(() => finish())
+
+  if (!pi || typeof pi.on !== "function") return
+
+  pi.on("session_start", async (_event, ctx) => {
+    if (!ctx || !ctx.hasUI) {
+      await done
+      return
+    }
+    const paint = () => {
+      const lines = renderStatus()
+      try {
+        // 放输入框下方：aboveEditor 已被 pptagent-welcome 占了，别抢位置
+        ctx.ui.setWidget("deps-status", lines.length ? lines : undefined, { placement: "belowEditor" })
+      } catch {
+        /* 会话已被替换，ctx 失效 */
+      }
+    }
+
+    redraw = paint
+    paint()
+    // 最多等 90 秒：装依赖可能几分钟，不能把 pi 卡死；超时先放行，装完 widget 自己会刷新
+    await Promise.race([done, new Promise((resolve) => setTimeout(resolve, 90_000))])
+    paint()
+
+    if (snapshot.phase !== "ok" && snapshot.phase !== "skipped") {
+      try {
+        ctx.ui.setStatus("deps", "依赖未就位")
+      } catch {
+        /* 同上 */
+      }
+    }
+  })
+
+  pi.on("session_shutdown", () => {
+    redraw = null
+  })
 }
 
 // ---------------------------------------------------------------------------
