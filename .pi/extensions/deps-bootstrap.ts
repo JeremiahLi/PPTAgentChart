@@ -27,8 +27,21 @@
  *   PI_PIP_INDEX_URL     同 indexUrl
  *   PI_DEPS_TIMEOUT_MIN  同 timeoutMinutes
  *   PI_DEPS_SKIP=1       完全跳过（应急）
+ *   PI_DEPS_FORCE=1      忽略 24h 缓存，强制真跑一次 pip 检查
  *   PI_DEPS_VERBOSE=1    打印判定过程
  *   PI_DEPS_CLI=1        命令行模式（检查/安装后退出，不挂到 pi 上）
+ *
+ * 终端反馈口径（每次启动**必定**输出一行，不让用户猜）：
+ *   依赖已在位（缓存命中）  `[deps] ✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；跳过重复检查）`
+ *   依赖已在位（真检查）    `[deps] ✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10）`
+ *   需要安装                `[deps] 依赖未就位（3/7 缺失），开始安装，pip 实时输出如下 ...` + 每包进度
+ *   安装完成                `[deps] ✓ 依赖安装完成（耗时 42s，复检通过）`
+ *   装不上                  `[deps] ✗ 依赖安装失败：...` + 手动修复命令
+ *   没有解释器              `[deps] ! 未找到 CPython 3.12 解释器，跳过检查 ...`（**每次都说**，不吃缓存）
+ *
+ * 缓存为什么必须留：`pip install --dry-run --no-index` 实测 11 秒，每次启动都跑等于每次多等 11 秒；
+ * 但缓存命中时提示里必须写清"X 前已验证、本次跳过"，不能让人误以为刚查过。
+ * 想立刻真查一次：`PI_DEPS_FORCE=1 pi`。
  *
  * 刻意不做的事：
  *   - 安装失败**不让 pi 崩溃**。起不来的 pi 没法排查问题，改成打醒目警告后放行。
@@ -166,6 +179,28 @@ function requirementsMtime(repoRoot) {
   }
 }
 
+/** 直接依赖条数（去掉空行与注释），只用于提示语里报个数。 */
+function countRequirements(repoRoot) {
+  try {
+    return fs
+      .readFileSync(path.join(repoRoot, "requirements.txt"), "utf8")
+      .split(/\r?\n/)
+      .filter((line) => line.trim() && !line.trim().startsWith("#")).length
+  } catch {
+    return 0
+  }
+}
+
+/** 把毫秒差写成"刚刚 / 23 分钟 / 3.2 小时 / 2 天"，给缓存提示用。 */
+function formatAge(ms) {
+  const minutes = Math.max(0, Math.round(ms / 60000))
+  if (minutes < 1) return "刚刚"
+  if (minutes < 60) return `${minutes} 分钟`
+  const hours = Math.round((minutes / 60) * 10) / 10
+  if (hours < 48) return `${hours} 小时`
+  return `${Math.round(hours / 24)} 天`
+}
+
 /** pip 是否支持 --dry-run（>= 22.2）。老版本无法做无副作用检查。 */
 function pipSupportsDryRun(python) {
   const result = run(python.cmd, [...python.args, "-m", "pip", "install", "--help"], {
@@ -207,7 +242,7 @@ function checkDeps(repoRoot, python) {
   return { ok: false, missing: [...new Set(missing)], detail }
 }
 
-function installDeps(repoRoot, python, config) {
+function installDeps(repoRoot, python, config, missing, reqCount) {
   const args = [
     ...python.args,
     "-m",
@@ -233,21 +268,25 @@ function installDeps(repoRoot, python, config) {
   args.push("-r", path.join(repoRoot, "requirements.txt"))
 
   const source = config.indexUrl || "默认索引 (PyPI)"
-  warn(`依赖未就位，从 ${source} 安装（首次可能要几分钟）...`)
+  const lacks = missing.length ? `缺 ${missing.length}/${reqCount || "?"}：${missing.slice(0, 6).join(", ")}` : "版本不满足"
+  warn(`依赖未就位（${lacks}），从 ${source} 安装，pip 实时输出如下 ...`)
+  const startedAt = Date.now()
   const result = spawnSync(python.cmd, args, {
     cwd: repoRoot,
+    // inherit = pip 的下载进度直接落到当前终端，不攒到最后一次性吐出
     stdio: ["ignore", "inherit", "inherit"],
     timeout: config.timeoutMinutes * 60 * 1000,
     windowsHide: true,
   })
+  const elapsed = Math.round((Date.now() - startedAt) / 1000)
 
   if (result.error?.code === "ETIMEDOUT") {
-    return { ok: false, detail: `pip install 超过 ${config.timeoutMinutes} 分钟未完成` }
+    return { ok: false, elapsed, detail: `pip install 超过 ${config.timeoutMinutes} 分钟未完成` }
   }
   if (result.status !== 0) {
-    return { ok: false, detail: `pip install 退出码 ${result.status}` }
+    return { ok: false, elapsed, detail: `pip install 退出码 ${result.status}（耗时 ${elapsed}s）` }
   }
-  return { ok: true, detail: "" }
+  return { ok: true, elapsed, detail: "" }
 }
 
 /**
@@ -261,32 +300,45 @@ function installDeps(repoRoot, python, config) {
 function ensureDeps(repoRoot) {
   const config = readConfig(repoRoot)
   const reqMtime = requirementsMtime(repoRoot)
+  const reqCount = countRequirements(repoRoot)
   const cached = readState(repoRoot)
   const now = Date.now()
+  const force = process.env.PI_DEPS_FORCE === "1"
 
   const python = resolvePython(config)
   if (!python) {
+    // 解释器缺失是硬阻塞（依赖一个都不会装），不吃缓存、每次启动都说
     const hint = config.python ? ` CPython ${config.python}` : ""
-    if (cached?.status !== "no-python" || now - (cached.checkedAt || 0) > CACHE_TTL_MS) {
-      warn(`未找到${hint} 解释器，跳过依赖检查`)
-    }
+    warn(`! 未找到${hint} 解释器，本次跳过依赖检查，依赖不会被安装`)
+    warn(`  py -0 查看本机已装版本；装好后重开 pi 即生效（PI_DEPS_SKIP=1 可静音）`)
     writeState(repoRoot, { status: "no-python", checkedAt: now, requirementsMtimeMs: reqMtime })
     return { status: "no-python", missing: [] }
   }
 
-  // 缓存命中：同一解释器 + requirements.txt 没改过 + 24h 内验证过
+  // 缓存命中：同一解释器 + requirements.txt 没改过 + 24h 内验证过。
+  // 提示里必须写清"多久前验的、本次没重跑"，否则会被误读成"刚检查过"。
   const cacheHit =
+    !force &&
     cached?.status === "ok" &&
     cached.python === python.executable &&
     cached.requirementsMtimeMs === reqMtime &&
     now - (cached.checkedAt || 0) < CACHE_TTL_MS
+  if (process.env.PI_DEPS_VERBOSE) {
+    verbose(
+      `缓存比较: status=${cached?.status} python=${cached?.python} → ${python.executable} mtime=${cached?.requirementsMtimeMs} → ${reqMtime} force=${force}`,
+    )
+  }
   if (cacheHit) {
     verbose("缓存命中，跳过检查")
+    warn(
+      `✓ 依赖已在位（${reqCount} 个直接依赖，${formatAge(now - (cached.checkedAt || 0))}前已验证；本次跳过重复检查）`,
+    )
     return { status: "ok", missing: [] }
   }
+  if (force) verbose("PI_DEPS_FORCE=1，忽略缓存重查")
 
   if (!pipSupportsDryRun(python)) {
-    warn("目标环境的 pip 不支持 --dry-run（需 >= 22.2），无法检查依赖，建议先升级 pip")
+    warn("! 目标环境的 pip 不支持 --dry-run（需 >= 22.2），无法检查依赖，建议先升级 pip")
     writeState(repoRoot, { status: "no-pip", checkedAt: now, requirementsMtimeMs: reqMtime })
     return { status: "no-pip", missing: [] }
   }
@@ -301,14 +353,15 @@ function ensureDeps(repoRoot) {
       requirementsMtimeMs: reqMtime,
       checkedAt: now,
     })
+    warn(`✓ 依赖已在位（${reqCount} 个直接依赖全部满足 · CPython ${python.version}，无需下载）`)
     return { status: "ok", missing: [] }
   }
 
   verbose(`未满足: ${first.missing.join(", ") || first.detail}`)
-  const install = installDeps(repoRoot, python, config)
+  const install = installDeps(repoRoot, python, config, first.missing, reqCount)
   if (!install.ok) {
-    warn(`依赖安装失败：${install.detail}`)
-    warn(`手动修复：${python.executable} -m pip install -r requirements.txt`)
+    warn(`✗ 依赖安装失败：${install.detail}`)
+    warn(`  手动修复：${python.executable} -m pip install -r requirements.txt`)
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,
@@ -322,7 +375,7 @@ function ensureDeps(repoRoot) {
 
   const second = checkDeps(repoRoot, python)
   if (!second.ok) {
-    warn(`安装完成但复检仍不满足：${second.missing.join(", ") || second.detail}`)
+    warn(`✗ 安装完成但复检仍不满足：${second.missing.join(", ") || second.detail}`)
     writeState(repoRoot, {
       status: "failed",
       python: python.executable,
@@ -341,7 +394,7 @@ function ensureDeps(repoRoot) {
     requirementsMtimeMs: reqMtime,
     checkedAt: now,
   })
-  warn(`依赖安装完成（${python.executable}）`)
+  warn(`✓ 依赖安装完成（耗时 ${install.elapsed}s，复检通过 · ${python.executable}）`)
   return { status: "installed", missing: [] }
 }
 

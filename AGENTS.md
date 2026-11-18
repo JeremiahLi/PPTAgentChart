@@ -55,9 +55,23 @@
 
 | 时机 | 入口 | 行为 |
 |---|---|---|
-| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定 → 缺则真装 → 结果缓存 24h |
+| pi 启动前 | `.pi/extensions/deps-bootstrap.ts`（async 工厂，pi 会 await 再继续启动） | 定位解释器 → `pip install --dry-run --no-index -r requirements.txt` 判定 → 缺则真装（pip 输出**直通终端**，逐包进度实时可见）→ 结果缓存 24h；**每次启动必打一行状态**，不吃静默 |
 | 首次部署 / 环境坏了 | 仓库根 `setup.bat` | 优先 `py -3.12`；有 `.pi/wheels/py3XY` 就离线装，没有才走镜像 |
 | 换机 / 补包 | `.pi/wheels/README.md` | `pip download` 到对应版本子目录 |
+
+**启动时终端会看到的六种行**（都在 stderr，前缀 `[deps]`）：
+
+```
+✓ 依赖已在位（7 个直接依赖，3.2 小时前已验证；本次跳过重复检查）   ← 24h 缓存命中，没重跑
+✓ 依赖已在位（7 个直接依赖全部满足 · CPython 3.12.10，无需下载）    ← 真跑过 pip 检查
+依赖未就位（缺 3/7：numpy, pillow, ...），从 <源> 安装，pip 实时输出如下 ...  ← 后面跟 pip 的下载进度
+✓ 依赖安装完成（耗时 42s，复检通过 · <解释器路径>）
+✗ 依赖安装失败：pip install 退出码 1（耗时 4s） + 手动修复命令
+! 未找到 CPython 3.12 解释器，本次跳过依赖检查，依赖不会被安装   ← 每次都打，不吃缓存
+```
+
+缓存命中那行故意写明"多久前验证过"，是为了不让人误读成"刚才查过"——真检查一次要 11 秒
+（`pip --dry-run --no-index` 实测），每次启动都跑不可接受。要立刻真查：`PI_DEPS_FORCE=1 pi`。
 
 **判定方式**：不猜 import 名、不自己比版本——直接跑
 `pip install --dry-run --no-index -r requirements.txt`，退出码 0 = 全部满足（含版本约束）。
@@ -77,7 +91,7 @@
 - `indexUrl` → 内网镜像，pip 标准索引路径 `/simple`（不是 `/simples`）。脚本会自动补
   `--trusted-host`（http 源不带会被 pip 直接拒绝）；不配则走官方 PyPI。
 - 安装失败**不阻塞 pi 启动**，只打警告 + 给出手动修复命令——起不来的 pi 没法排查问题。
-- 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、
+- 应急开关：`PI_DEPS_SKIP=1` 跳过、`PI_DEPS_VERBOSE=1` 看判定、`PI_DEPS_FORCE=1` 忽略 24h 缓存强制重查、
   `PI_PIP_INDEX_URL` / `PI_DEPS_PY_VERSION` / `PI_DEPS_TIMEOUT_MIN` 覆盖 deps.json。
 - 仓库根只向上找 3 层就停：再往上是父目录的别的项目，会把依赖装错地方。
 - 已知边界：`pip install` 装进目标解释器本身，**没有 venv 隔离**。多项目共用一个 Python
