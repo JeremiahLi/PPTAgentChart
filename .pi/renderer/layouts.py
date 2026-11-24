@@ -25,7 +25,7 @@ from pptx.util import Inches, Pt
 import charts
 import theme
 from theme import (ACCENT_CYCLE, CHART_SERIES, COLORS, CONTENT_W, FONT_LATIN,
-                   FONT_MAIN, FONT_SIZES, MARGIN_L, tint)
+                   FONT_MAIN, FONT_SIZES, LANG_ALT, LANG_MAIN, MARGIN_L, tint)
 from icons import draw_icon
 
 In = Inches
@@ -64,8 +64,32 @@ def _c(name: str) -> RGBColor:
     return RGBColor.from_string(COLORS.get(name, name))
 
 
-def _set_font_on_rPr(rPr) -> None:
-    """把 `a:latin` / `a:ea` / `a:cs` 三处 typeface 成对写上（顺序按 ECMA-376）。
+def _has_cjk(text: str) -> bool:
+    """文本里有没有中日韩汉字（决定这段 run 的主语言）。"""
+    return any("\u3400" <= ch <= "\u4dbf" or "\u4e00" <= ch <= "\u9fff" for ch in text or "")
+
+
+def _set_lang(rPr, text: str | None = None) -> None:
+    """写 run 级语言标记 `lang` + `altLang`。
+
+    Office 2007 的 Ribbon 字体框按 run 的语言决定显示哪个字体名：`lang` 缺失时它按
+    默认语言（`en-US`）走西文路径，中文名在那种路径下会渲染成乱码。Office 自己保存
+    的 pptx 里，每个 `a:rPr` 都同时带 `lang` 与 `altLang`。
+
+    纯西文的 run 标 `en-US`（否则英文会被当中文做校对/断词），其余标 `zh-CN`。
+    图表等拿不到文本上下文的场景传 `None`，按中文交付默认值走。
+    """
+    if text is not None and not _has_cjk(text):
+        rPr.set("lang", LANG_ALT)
+        rPr.set("altLang", LANG_MAIN)
+    else:
+        rPr.set("lang", LANG_MAIN)
+        rPr.set("altLang", LANG_ALT)
+
+
+def _set_font_on_rPr(rPr, text: str | None = None) -> None:
+    """把 `a:latin` / `a:ea` / `a:cs` 三处 typeface 成对写上（顺序按 ECMA-376），
+    并给这个 rPr 写语言标记（`_set_lang`）。
 
     PowerPoint 按**字符**挑字体：西文/数字走 `a:latin`、中文走 `a:ea`。所以每个 run
     都要成对写死，不能只写一个 —— 只写 latin，中文会退回主题字体（模板自带 Calibri，
@@ -75,6 +99,10 @@ def _set_font_on_rPr(rPr) -> None:
     所以统一用 `latin.addnext(...)` 插进去，而不是 append 到 rPr 末尾
     （rPr 末尾可能是 `a:sym` / `a:hlinkClick`）。
     """
+    if text is not None:
+        _set_lang(rPr, text)
+    elif not rPr.get("lang"):
+        _set_lang(rPr)                    # 图表等无文本上下文：按中文默认值补
     latin = rPr.find(qn("a:latin"))
     if latin is None:
         latin = etree.Element(qn("a:latin"))
@@ -98,16 +126,62 @@ def _set_font_on_rPr(rPr) -> None:
 
 
 def apply_run_font(run) -> None:
-    """给一个 run 写上「中文微软雅黑 + 西文 Times New Roman」。
+    """给一个 run 写上「中文微软雅黑 + 西文 Times New Roman」+ 语言标记。
 
     全 deck 唯一的字体入口：`text_box` / `_fill_cell` / 页码（render.py）都走它。
-    自己新建 run 时**必须**调一次，否则那一段会退回模板字体（Calibri）。
+    自己新建 run 时**必须**调一次，否则那一段会退回模板字体（Calibri）；
+    语言标记按 run 的实际文本判定（纯西文 → en-US，含中文 → zh-CN）。
     """
     rPr = run._r.get_or_add_rPr()
     latin = rPr.find(qn("a:latin"))
     if latin is None:                          # python-pptx 的 run.font.name 会建 a:latin
         run.font.name = FONT_LATIN
-    _set_font_on_rPr(rPr)
+    _set_font_on_rPr(rPr, run.text)
+
+
+def _mark_language_on(root) -> int:
+    """给一棵 XML 树里**所有**段落补语言标记，返回改动处数。
+
+    为什么要扫整页、而不是只在 `apply_run_font` 里写：`python-pptx` 只为带文字的
+    run 建 `a:rPr`，段落末尾的 `a:endParaRPr` 它从不写。PowerPoint 在文本框末尾
+    （光标停在最后一段之后）或选中整个外框时，Ribbon 字体框读的正是
+    `a:endParaRPr` —— 缺了它，整框文字仍会显示乱码，哪怕每个 run 都标了语言。
+
+    段落里残留的 `a:rPr`（`lang="en-US"` 的模板默认值）也按实际文本纠正成中文。
+    """
+    changed = 0
+    for p in root.iter(qn("a:p")):
+        para_text = "".join(t.text or "" for t in p.iter(qn("a:t")))
+        lang, alt = (LANG_ALT, LANG_MAIN) if (para_text and not _has_cjk(para_text)) \
+            else (LANG_MAIN, LANG_ALT)
+        end = p.find(qn("a:endParaRPr"))
+        if end is None:
+            end = etree.SubElement(p, qn("a:endParaRPr"))   # 必须是 a:p 最后一个子元素
+        if end.get("lang") != lang:
+            end.set("lang", lang)
+            end.set("altLang", alt)
+            changed += 1
+        for r in p.iter(qn("a:r")):
+            rPr = r.find(qn("a:rPr"))
+            if rPr is None:
+                continue
+            run_text = "".join(t.text or "" for t in r.iter(qn("a:t")))
+            want = LANG_ALT if (run_text and not _has_cjk(run_text)) else LANG_MAIN
+            if rPr.get("lang") != want:
+                rPr.set("lang", want)
+                rPr.set("altLang", LANG_MAIN if want == LANG_ALT else LANG_ALT)
+                changed += 1
+        for d in p.iter(qn("a:defRPr")):
+            if d.get("lang") != lang:
+                d.set("lang", lang)
+                d.set("altLang", alt)
+                changed += 1
+    return changed
+
+
+def mark_text_language(container) -> int:
+    """给一页（或备注页）补语言标记：`slide` / `notes_slide` 都行。"""
+    return _mark_language_on(container._element)
 
 
 def _est_lines(s: str, width: float) -> int:
@@ -3452,6 +3526,8 @@ def _apply_chart_fonts(root) -> None:
     for tag in ("a:defRPr", "a:rPr"):
         for rPr in root.iter(qn(tag)):
             _set_font_on_rPr(rPr)
+    # 图表 txPr 的 a:p 也缺 endParaRPr：选中图表标题/图例文字时字体框读它
+    _mark_language_on(root)
 
 
 def _normalize_chart_xml(chart):

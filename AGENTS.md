@@ -40,7 +40,8 @@
 - **字体**：中文微软雅黑 + 西文 Times New Roman，只用 Windows 自带字体，
   **仓库不带字体包**（不要放 `fonts/`、`*.ttf`）；口径与实现见 `.pi/renderer/theme.py`
   与 `.pi/docs/pitfalls.md` 第 24 条。交付前跑 `python .pi/tests/font_audit.py .pi/out/xxx.pptx`
-  自检（逐段核对 latin+ea 字体对 + 母版主题 + 编码）；要让**英文与数字也用雅黑**，
+  自检（逐段核对 latin+ea 字体对 + `lang`/`endParaRPr` 语言标记 + 母版主题 + 编码）；
+  要让**英文与数字也用雅黑**，
   渲染前设 `$env:PPT_FONT_LATIN="微软雅黑"` 即可，不用改代码。
 
 ## 依赖与离线部署

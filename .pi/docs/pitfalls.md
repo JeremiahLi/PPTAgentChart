@@ -318,7 +318,17 @@ hierarchy node.desc **20+**。阈值集中在 `.pi/renderer/qc.py` 的 `_*_DESC_
   默认值是宋体，不改它中文就变宋体）。
 - matplotlib 图表同口径（`charts._setup_font`）：`font.family` 传
   `[Times New Roman, Microsoft YaHei, …]` 做**逐字符回退**，英文命中外文、中文回落雅黑。
-- 回归：`.pi/tests/smoke.py` 第 17 节 —— 幻灯片/图表里每一段文字都必须带这对字体，
+- **语言标记 `lang` 也必须写**（2026-11-24 补，Office 2007 字体栏乱码的修法）：
+  `a:rPr` / `a:defRPr` / `a:endParaRPr` 都要带 `lang` + `altLang`（含中文 `zh-CN`、
+  纯西文 `en-US`），`presentation.xml` 的 `defaultTextStyle`、母版、版式里模板自带的
+  `lang="en-US"` 一律改成 `zh-CN`。原因：python-pptx 新建 run **不写 `lang`**，它自带的
+  模板又全是 `en-US`，中文正文因此被 PowerPoint 当成西文。正文渲染看不出异常（字体按
+  字符的 Unicode 范围挑 `a:latin`/`a:ea`），但 **Office 2007 的 Ribbon 字体名称框**
+  按语言走西文路径显示中文名 → 乱码。实现：`layouts._set_lang` / `_mark_language_on`
+  （每页收口，含图表 `c:txPr` 的 `a:p`）/ `theme.apply_document_language`（默认值）。
+  机检：`fontcheck.py` 第 4、5 条 + `smoke.py` 第 17 节。**别只给 run 补、漏掉
+  `a:endParaRPr`**：选中整个外框或光标停在段尾时，字体框读的正是它。
+- **回归：`.pi/tests/smoke.py` 第 17 节 —— 幻灯片/图表里每一段文字都必须带这对字体，
   且主题 `fontScheme` 的三处都要写对。**不要再往仓库里放 `fonts/` 或 `*.ttf`**，
   也**不要**为了"号码好看"再引入 `text_box(font=...)` 之类的覆盖参数
   （历史上"号码用雅黑、正文用思源"就是这么漂移的）。

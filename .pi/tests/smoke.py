@@ -643,6 +643,20 @@ def main() -> int:
                     bad.append(f"<{tag} latin={_font_of(el, 'latin')} ea={_font_of(el, 'ea')}>")
         return n, bad
 
+    def _bad_lang(xml_bytes) -> list[str]:
+        """语言标记：每个 rPr/defRPr 要有 lang，每个 a:p 要有 endParaRPr 且带 lang。
+        缺失时 Office 2007 的 Ribbon 字体框显示乱码（正文渲染不受影响）。"""
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(xml_bytes)
+        bad = [f"<{tag}> 无 lang"
+               for tag in ("rPr", "defRPr")
+               for el in root.iter(f"{{{A_NS}}}{tag}") if not el.get("lang")]
+        for p in root.iter(f"{{{A_NS}}}p"):
+            end = p.find(f"{{{A_NS}}}endParaRPr")
+            if end is None or not end.get("lang"):
+                bad.append("<a:p> 无 endParaRPr/lang")
+        return bad
+
     with tempfile.TemporaryDirectory() as td:
         out = Path(td) / "fonts.pptx"
         render.build_pptx(load_deck(str(FIXTURE)), str(out))
@@ -664,6 +678,14 @@ def main() -> int:
                 cbad += [f"{name}: {x}" for x in b]
             _check(f"原生图表 {len(charts)} 个部件里 {cruns} 段文字也补齐了字体对",
                    bool(charts) and cruns > 0 and not cbad, "; ".join(cbad[:3]))
+
+            lbad = []
+            for name in z.namelist():
+                if name.endswith(".xml") and name.startswith(
+                        ("ppt/slides/slide", "ppt/charts/chart", "ppt/notesSlides/")):
+                    lbad += [f"{name}: {x}" for x in _bad_lang(z.read(name))]
+            _check("每段文字都带 lang，每个段落都有 endParaRPr/lang（Office 2007 字体框）",
+                   not lbad, "; ".join(lbad[:3]))
 
             import xml.etree.ElementTree as ET
             theme_root = ET.fromstring(z.read("ppt/theme/theme1.xml"))

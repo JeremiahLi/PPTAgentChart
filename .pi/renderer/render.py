@@ -21,7 +21,7 @@ import layouts
 import speaker_notes
 import doc_analyzer
 import theme
-from theme import COLORS, apply_theme_fonts
+from theme import COLORS, apply_theme_fonts, apply_document_language
 from ppt_dsl import load_deck, SlideNotes
 import qc
 
@@ -41,6 +41,9 @@ def build_pptx(deck, out_path: str, add_speaker_notes: bool = True):
     # 幻灯片里每段文字都显式带了字体，这一步是让"默认值"也对齐
     # （用户在 PowerPoint 里新加文本/编辑图表默认文本时才不会退回 Calibri）。
     apply_theme_fonts(prs)
+    # 模板自带的是英文语言标记（defaultTextStyle / 母版 / 版式全是 en-US），
+    # 中文正文在这套默认值下会被 PowerPoint 当西文 —— 统一改中文。
+    apply_document_language(prs)
     blank = prs.slide_layouts[6]
     for i, slide_model in enumerate(deck.slides, 1):
         slide = prs.slides.add_slide(blank)
@@ -62,6 +65,8 @@ def build_pptx(deck, out_path: str, add_speaker_notes: bool = True):
                     for _p in tf.paragraphs:
                         for _run in _p.runs:
                             layouts.apply_run_font(_run)
+                    # 备注页段落也要有 endParaRPr 的语言标记（与正文同理）
+                    layouts.mark_text_language(notes_slide)
 
         # 页码：左下角。底图 bg-content.png 右下角有单位名称水印
         # （x 10.95–12.90, y 6.97–7.15），页码放右下会压在水印上。
@@ -79,6 +84,10 @@ def build_pptx(deck, out_path: str, add_speaker_notes: bool = True):
             run.font.color.rgb = RGBColor.from_string(COLORS["text_sub"])
             # 自己新建的 run 必须补字体（否则退回模板字体 Calibri）
             layouts.apply_run_font(run)
+        # 收口：整页每个段落都写语言标记（含空形状的 endParaRPr）。
+        # python-pptx 不写 endParaRPr；Office 2007 在选中外框 / 光标停在段尾时，
+        # Ribbon 字体框读的就是它 —— 缺了仍然乱码，哪怕每个 run 都标了语言。
+        layouts.mark_text_language(slide)
     prs.save(out_path)
 
 

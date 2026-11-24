@@ -285,6 +285,14 @@ def tint(hex_color: str, ratio: float = 0.88) -> str:
 FONT_LATIN = os.environ.get("PPT_FONT_LATIN", "Times New Roman").strip() or "Times New Roman"
                                    # 西文 / 数字（a:latin）
 FONT_MAIN = "微软雅黑"              # 中文（a:ea，East Asian）
+
+# ---------- 语言标记（PowerPoint 2007 的 Ribbon 字体框要靠它） ----------
+# `a:rPr` 的 `lang` 决定 PowerPoint 认为这段文字是什么语言。python-pptx 新建 run
+# **不写 lang**，而它自带的模板（Office 英文模板）里里全是 `lang="en-US"`：
+# 中文正文被标成英文，Office 2007 的 Ribbon 字体框就显示乱码（正文渲染不受影响，
+# 所以这个问题藏了很久）。Office 自己保存的文件一定写 `lang` + `altLang`。
+LANG_MAIN = "zh-CN"                 # 中文为主
+LANG_ALT = "en-US"                  # 备选语言
 #
 # 想要**全文（含英文与数字）都是微软雅黑**时，不用改代码：
 #   Windows PowerShell : $env:PPT_FONT_LATIN="微软雅黑"
@@ -330,6 +338,36 @@ def apply_theme_fonts(prs) -> None:
                         script.set("typeface", FONT_MAIN)
         theme_part._blob = etree.tostring(  # noqa: SLF001 —— python-pptx 没有公开的写入口
             root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def apply_document_language(prs) -> None:
+    """把默认文本样式 / 母版 / 版式里的 `lang="en-US"` 改成中文。
+
+    python-pptx 自带的是 Office **英文**模板：`presentation.xml` 的
+    `p:defaultTextStyle`、每个母版的 `rPr`/`endParaRPr`、每个版式的占位符全是
+    `lang="en-US"`。用户新加文本框、或某段 run 没写 lang 时都继承到英文，
+    Office 2007 的字体框就按西文路径显示 —— 中文名在那里会变成乱码。
+
+    只改语言属性，不动字体槽（字体仍由 `apply_theme_fonts` 负责）。
+    """
+    a_ns = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    parts = [prs.part]
+    for master in prs.slide_masters:
+        parts.append(master.part)
+        parts.extend(layout.part for layout in master.slide_layouts)
+    # notesMaster 故意不碰：python-pptx 访问 `prs.notes_master` 会**当场建一个**
+    # 默认笔记母版，只为改 lang 就多出一个部件不划算；备注页正文由
+    # `layouts.mark_text_language(notes_slide)` 逐段处理。
+    for part in parts:
+        root = getattr(part, "_element", None)
+        if root is None:                     # 非 XmlPart（理论上不会走到）
+            continue
+        for tag in ("rPr", "defRPr", "endParaRPr"):
+            for el in root.iter(f"{{{a_ns}}}{tag}"):
+                if el.get("lang") != LANG_MAIN:
+                    el.set("lang", LANG_MAIN)
+                if not el.get("altLang"):
+                    el.set("altLang", LANG_ALT)
 
 
 # ---------- 字号阶梯（pt，实测参考 PDF：正文 13-16，标题 20-24） ----------

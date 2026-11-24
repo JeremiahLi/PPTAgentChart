@@ -6,12 +6,16 @@
     python .pi/renderer/fontcheck.py .pi/out/我的汇报.pptx
     python .pi/tests/font_audit.py .pi/out/我的汇报.pptx     # 薄壳，历史命令继续可用
 
-查三件事，任何一件不过就 exit 1：
+查五件事，任何一件不过就 exit 1：
   1. 幻灯片 / 原生图表 / 备注页里每个 `a:rPr`、`a:defRPr` 的 latin + ea **成对**写全；
      （只写一个，另一半会退回模板字体 Calibri —— 这就是"字体不对"最常见的原因）
   2. 母版主题的 majorFont / minorFont / `script="Hans"` 三项也都是这套字体；
      （改主题是为了用户新加文本框、编辑图表默认文本时拿到的仍是雅黑，不是宋体）
   3. 字体名在 XML 里是 **UTF-8 正确**的"微软雅黑"，不是被 GBK 写坏的乱码字节。
+  4. 幻灯片 / 图表 / 备注页里每个 `a:rPr`、`a:defRPr` 都带 `lang`（`zh-CN` 或 `en-US`）；
+     （缺失时 Office 2007 的 Ribbon 字体框按西文路径显示中文名 → 乱码）
+  5. 每个 `a:p` 都有 `a:endParaRPr` 且带 `lang`；
+     （python-pptx 从不写它，选中外框/光标停在段尾时字体框读的就是它）
 
 只读不写，不依赖 renderer，也不需要装 Office。
 """
@@ -66,18 +70,38 @@ def audit(path: Path, *, verbose: bool = True) -> list[str]:
                 continue
             g = _group(name)
             cnt = per_part.setdefault(g, Counter())
+            CHECKED = ("幻灯片", "原生图表", "备注页")
             for tag in ("rPr", "defRPr", "endParaRPr"):
                 for el in root.iter(f"{{{A}}}{tag}"):
                     lv, ev = _face(el, "latin"), _face(el, "ea")
                     cnt[(lv, ev)] += 1
-                    # endParaRPr 只是段落末尾标记，没有可见文字，不判错（否则每个图
+                    # 语言标记：缺失时 Office 2007 的字体框按西文路径解析中文名 → 乱码
+                    if g in CHECKED and not el.get("lang"):
+                        problems.append(
+                            f"{name}: <{tag}> 缺少 lang（Office 2007 字体框兼容性）")
+                    # endParaRPr 只是段落末尾标记，没有可见文字，不判字体对错（否则每个图
                     # 表部件都会误报一条）
                     if tag == "endParaRPr":
                         continue
-                    if g in ("幻灯片", "原生图表", "备注页") and ev != EA_EXPECT:
+                    if g in CHECKED and ev != EA_EXPECT:
                         problems.append(f"{name}: <{tag}> ea={ev!r}（应为 {EA_EXPECT!r}）")
                     elif g in ("幻灯片",) and lv != LATIN_EXPECT:
                         problems.append(f"{name}: <{tag}> latin={lv!r}（应为 {LATIN_EXPECT!r}）")
+            # 空段落 / 段尾：endParaRPr 必须存在且带语言标记（选中外框时字体框读它）
+            if g in CHECKED:
+                for paragraph in root.iter(f"{{{A}}}p"):
+                    end = paragraph.find(f"{{{A}}}endParaRPr")
+                    if end is None:
+                        problems.append(f"{name}: <a:p> 缺少 endParaRPr（选中形状时字体框兼容性）")
+                    elif not end.get("lang"):
+                        problems.append(f"{name}: <a:endParaRPr> 缺少 lang（选中形状时字体框兼容性）")
+            # 默认文本样式 / 母版 / 版式：模板自带的是 en-US，中文交付必须改掉
+            if g == "母版/版式" or name == "ppt/presentation.xml":
+                for tag in ("rPr", "defRPr", "endParaRPr"):
+                    for el in root.iter(f"{{{A}}}{tag}"):
+                        if el.get("lang") == "en-US":
+                            problems.append(
+                                f"{name}: <{tag} lang=\"en-US\">（默认语言没改成中文）")
             # 字体名不能是 GBK 写坏的乱码：UTF-8 有、GBK 字节没有
             if EA_EXPECT.encode("gbk") in raw and EA_EXPECT.encode("utf-8") not in raw:
                 problems.append(f"{name}: 字体名被写成 GBK 乱码字节")
@@ -114,7 +138,7 @@ def audit(path: Path, *, verbose: bool = True) -> list[str]:
             for p in problems[:10]:
                 print(f"    - {p}")
         else:
-            print("  [ ok ] 全部文字都是「中文微软雅黑 + 西文 Times New Roman」")
+            print("  [ ok ] 字体对 + 语言标记 + 主题默认字体全部正确")
     return problems
 
 
