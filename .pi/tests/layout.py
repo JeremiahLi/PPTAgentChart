@@ -26,6 +26,7 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -142,6 +143,10 @@ def check_docs() -> None:
     docs += sorted((PI_ROOT / "prompts").glob("*.md"))
     offenders: list[str] = []
     stale_entry: list[str] = []
+    # 裸命令名：`pptx.py build` 这种照抄就报"文件不存在"的写法。
+    # 只匹配"命令 + 子命令"的组合，放过"入口当年就叫 pptx.py"这类历史叙述。
+    bare_entry = re.compile(r"\bpptx\.py\s+(?:analyze|outline|budget|check|build|status)\b")
+    bare_cmds: list[str] = []
     for d in docs:
         if not d.exists():
             continue
@@ -153,8 +158,12 @@ def check_docs() -> None:
             # 入口改名后，文档里不能再出现旧文件名（它会让 `.pi` 顶掉第三方 pptx 库）
             if ".pi/pptx.py" in line or ".pi\\pptx.py" in line:
                 stale_entry.append(f"{d.relative_to(REPO)}:{i} {line.strip()[:70]}")
+            if bare_entry.search(line):
+                bare_cmds.append(f"{d.relative_to(REPO)}:{i} {line.strip()[:70]}")
     _check("没有可照抄的旧命令", not offenders, "\n        ".join(offenders))
     _check("没有旧入口名 .pi/pptx.py", not stale_entry, "\n        ".join(stale_entry))
+    _check("没有裸写的 pptx.py 子命令（要写 python .pi/cli.py …）",
+           not bare_cmds, "\n        ".join(bare_cmds))
 
 
 def main() -> int:

@@ -3,9 +3,9 @@
 > 注：本文路径已按同日完成的目录调整（工程主体移入 `.pi/`）统一改写；
 > 去掉 `.pi/` 前缀即为调整前的原位置。
 
-> **路径时效**：本文写于 2026-11 代码拆分之前。文中的 `.pi/renderer/x.py` 现在位于
-> `engine/<子包>/x.py`（`dsl` / `plan` / `render` / `qc` / `ingest`，`build.py` 在 `engine/` 根），
-> 命令一律改成 `python -m engine.<子包>.x`。正文保留当时的路径，不为历史记录改事实。
+> **路径时效**：本文写于代码拆分之前。文中的 `.pi/renderer/x.py` 现在位于
+> `.pi/engine/<子包>/x.py`（`dsl` / `plan` / `render` / `qc` / `ingest`，`build.py` 在 `engine/` 根），
+> 命令一律改成 `python .pi/cli.py run engine.<子包>.x`。正文保留当时的路径，不为历史记录改事实。
 针对 `.pi/renderer/`（10.5k 行、16 个模块）、`.pi/assets/icons/`（9931 个文件）与仓库根目录资产做的一次静态+动态盘点。
 每条都给了定位，判据是"能不能被验证"，不是"看起来像"。
 

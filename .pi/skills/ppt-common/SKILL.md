@@ -16,11 +16,11 @@ description: PPT 制作的公共规范（出图通道 / 19 版式字段契约 / 
 - **默认走 `.pi/cli.py`**：一个入口按顺序跑完整条流水线，跳步会被当场拦下
   （`analyze → outline → budget → 写页 → build`）。
   `python .pi/cli.py` 不带参数 = 看当前进度与下一步该跑哪条。
-- 一条命令出图：`pptx.py build <slides_dir> -o <out.pptx> --brief 方向`
+- 一条命令出图：`python .pi/cli.py build <slides_dir> -o <out.pptx> --brief 方向`
   = 合并 + 质检 + 渲染 + 字体自检（默认原生可编辑图表；要高质感图加 `--chart-mode mpl`）；
   `--source` 不用写，`.pi/work/analysis.md` 在就自动带上。
-- 只质检不出文件：`pptx.py check`
-- 单步调试时才拆开敲（都是包模块，**从仓库根**用 `python -m` 运行）：
+- 只质检不出文件：`python .pi/cli.py check`
+- 单步调试时才拆开敲（都是包模块，**从仓库根**用 `cli.py run engine.<模块>` 运行）：
   `python .pi/cli.py run engine.render.render <deck.json> -o <out.pptx> --qc` /
   `python .pi/cli.py run engine.render.merge <slides_dir> <out.json>` /
   `python .pi/cli.py run engine.dsl.ppt_dsl <deck.json>`（只看 schema）

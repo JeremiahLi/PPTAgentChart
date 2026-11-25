@@ -70,7 +70,7 @@ python .pi/cli.py check     # 只质检不出文件（改完页先看红线）
 > **慢档是默认值**：大纲给用户过目、warning 归零（末行 `RESULT` JSON 里
 > `ok=false, reason=warnings_not_zero`）这些是默认动作。用户说"快点"才切 `fast`。
 
-> **成败看 `RESULT`，不看退出码**：`pptx.py` / `build.py` / `merge.py` / `render.py --qc`
+> **成败看 `RESULT`，不看退出码**：`python .pi/cli.py <阶段>` / `engine.build` / `engine.render.merge` / `engine.render.render --qc`
 > 的退出码恒 0 ——校验拦截（schema 不过、质检 error、字体不过、上游过期）是检查在正常工作，
 > 不是运行失败。每次输出末行都有 `RESULT {json}`，`ok=false` 就按 `reason` 和
 > `errors[].code` 回炉。
@@ -83,7 +83,7 @@ python .pi/cli.py check     # 只质检不出文件（改完页先看红线）
 
 然后按 ppt-common 的工作流走：
 **analyze → outline（给用户过目）→ budget → 成批生成（一个文件 5-8 页）→
-`pptx.py build` 一条命令出图 → 回炉 → 交付**。
+`python .pi/cli.py build` 一条命令出图 → 回炉 → 交付**。
 
 > **交稿前必跑一次输入覆盖度**：`python .pi/cli.py build -o .pi/out/主题.pptx`
 > （`--source` 会自动带上 `.pi/work/analysis.md`）。它会把"输入里有、deck 里没露面"的
@@ -131,7 +131,7 @@ python .pi/cli.py outline --title "主题" --brief seminar
 ```
 
 > 老的等价命令（单步调试时才用）：`docx_in.py` + `plan.py --emit-analysis` + `plan.py`。
-> 正常流程别拆开敲——`pptx.py analyze` 只是把这几步按正确顺序串起来，并记录输入指纹。
+> 正常流程别拆开敲——`python .pi/cli.py analyze` 只是把这几步按正确顺序串起来，并记录输入指纹。
 
 > `--emit-analysis` **只切骨架、不出大纲**：它把"读全文写整张表"换成"改三列"，
 > 少几千字输出。骨架里的「章节/模块」可以合并改名，但**不要删掉要上页的模块** ——
@@ -174,7 +174,7 @@ python .pi/cli.py budget     # 大纲定稿后跑；照预算写，校验必放�
 
 然后按 `ppt-common` 的工作流走：
 **analyze → outline（给用户过目）→ budget → 成批生成（一个文件 5-8 页）→
-`pptx.py build` 一条命令出图 → 回炉（按批重写）→ 交付**。
+`python .pi/cli.py build` 一条命令出图 → 回炉（按批重写）→ 交付**。
 
 ## 修 slides 报错的纪律（先读后改，别盲改）
 
@@ -207,7 +207,7 @@ python .pi/cli.py budget     # 大纲定稿后跑；照预算写，校验必放�
    见第 0 步。（页数同样不单独问：两个方向都由资料量决定、都不设上限 ——
    研讨型超 50 页、汇报型超 30 页时，把"只讲某几章 / 拆成多份 / 换类型"
    **并进大纲评审那一次**问完，不要出图后再开一轮。）
-2. **产出落点**：输入分析写 `.pi/work/analysis.md`（骨架由 `pptx.py analyze` 生成）；
+2. **产出落点**：输入分析写 `.pi/work/analysis.md`（骨架由 `python .pi/cli.py analyze` 生成）；
    逐页 DSL 写成 `.pi/work/slides/NN-batch.json`，**一个文件装 5-8 页（数组）**；
    出图一条命令：`python .pi/cli.py build -o .pi/out/<主题>.pptx --brief seminar
    --style style-harness --speed slow`（自带质检 + 字体自检 + `--source` 自动带上），

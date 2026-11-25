@@ -4,9 +4,9 @@
 > 可复算的实测数据、修复落点与回归入口都在本文；长期规则已写进
 > [`pitfalls.md`](pitfalls.md) 的第 21 / 22 条。
 
-> **路径时效**：本文写于 2026-11 代码拆分之前。文中的 `.pi/renderer/x.py` 现在位于
-> `engine/<子包>/x.py`（`dsl` / `plan` / `render` / `qc` / `ingest`，`build.py` 在 `engine/` 根），
-> 命令一律改成 `python -m engine.<子包>.x`。正文保留当时的路径，不为历史记录改事实。
+> **路径时效**：本文写于代码拆分之前。文中的 `.pi/renderer/x.py` 现在位于
+> `.pi/engine/<子包>/x.py`（`dsl` / `plan` / `render` / `qc` / `ingest`，`build.py` 在 `engine/` 根），
+> 命令一律改成 `python .pi/cli.py run engine.<子包>.x`。正文保留当时的路径，不为历史记录改事实。
 
 ## 一、P3：`panel_2col` 右模块的迷你表被挤出框
 

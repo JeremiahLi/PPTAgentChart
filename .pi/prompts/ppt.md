@@ -11,8 +11,8 @@ argument-hint: "<文档路径> [研讨型|汇报型] [经典藏青|深蓝商务|
 
 定了维度再加载 `ppt-common` + 对应方向技能（`ppt-seminar` / `ppt-briefing`），
 然后按顺序跑（每一步都会核对上游，跳步会被拦）：
-`pptx.py analyze <文档>` → `pptx.py outline --title ...`（慢档给用户过目）→
-**成批生成（一个文件 5-8 页，别一页一个文件）** → `pptx.py build -o .pi/out/主题.pptx`
+`python .pi/cli.py analyze <文档>` → `python .pi/cli.py outline --title ...`（慢档给用户过目）→
+**成批生成（一个文件 5-8 页，别一页一个文件）** → `python .pi/cli.py build -o .pi/out/主题.pptx`
 （三个维度显式写进命令行）→ 回炉（慢档到 warning 归零）→ 交付。
 
 不确定做到哪了：`python .pi/cli.py`（不带参数）会列出进度和下一步该跑哪条。
