@@ -1,19 +1,25 @@
-"""迁移期转发桩：真身已在 `engine/dsl/ppt_dsl.py`。
+"""迁移期转发桩：真身在 `engine/dsl/ppt_dsl.py`。搬迁结束后删掉本文件。
 
-保留这个文件，是为了让 `.pi/renderer/*.py` 的 CLI、`.pi/tests/*` 和第三方
-`import ppt_dsl` 全部不用改；搬迁结束后删掉本文件即可。
-
-做法是**把本模块对象整体换成真模块**（而不是 `import *` 转发）：`import *`
-不导出下划线开头的名字，也无法保证 `ppt_dsl is engine.dsl.ppt_dsl`，
-而 isinstance / 模块级可变状态都依赖"同一个对象"。
+两种调用都要通，缺一种就是静默失效：
+  - 被 import → 整体换成真模块。不能写成 `from ... import *`：那样导不出下划线
+    开头的名字，也保证不了 `该模块 is 真模块`，而 isinstance 和模块级可变状态
+    （theme.COLORS 会被 apply_style 就地改）都依赖"同一个对象"。
+  - 被 `python .pi/renderer/ppt_dsl.py ...` 直接跑 → 转给真身的 `__main__`。
+    少这一段会变成"什么都不做、退出码 0"，而 `pptx.py` 正是用子进程调这些脚本，
+    于是表现为"命令成功但产物没生成"。
 """
 import sys
 from pathlib import Path
 
-_ROOT = str(Path(__file__).resolve().parents[2])          # .pi/
+_ROOT = str(Path(__file__).resolve().parents[2])        # 仓库根
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from engine.dsl import ppt_dsl as _real                 # noqa: E402
+if __name__ == "__main__":
+    import runpy
 
-sys.modules[__name__] = _real
+    runpy.run_module("engine.dsl.ppt_dsl", run_name="__main__", alter_sys=True)
+else:
+    from engine.dsl import ppt_dsl as _real
+
+    sys.modules[__name__] = _real
