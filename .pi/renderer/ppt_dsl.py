@@ -10,9 +10,9 @@
 import sys
 from pathlib import Path
 
-_PI = str(Path(__file__).resolve().parents[1])          # .pi/
-if _PI not in sys.path:
-    sys.path.insert(0, _PI)
+_ROOT = str(Path(__file__).resolve().parents[2])          # .pi/
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 from engine.dsl import ppt_dsl as _real                 # noqa: E402
 

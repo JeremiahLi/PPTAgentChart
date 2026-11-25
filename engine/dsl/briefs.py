@@ -5,7 +5,7 @@
 而在「怎么取舍原文」：研讨型逐条摆全、缺口明写；汇报型一页一个主张、
 结论先行。所以这层是策略数据，不是渲染配置。
 
-新增一个方向 = 往 `.pi/renderer/briefs/` 里放一个 yaml，零代码改动：
+新增一个方向 = 往 `.pi/briefs/` 里放一个 yaml，零代码改动：
   - `writing` 段给 Agent 读（开工前 Read 一次，按它选内容、定页数）
   - `check`  段给 qc 读（页数区间、每页论据上限、标题禁用词）
 
@@ -18,7 +18,8 @@ from functools import lru_cache
 
 import yaml
 
-BRIEF_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "briefs")
+from ..paths import BRIEF_DIR
+
 DEFAULT_BRIEF = "seminar"
 
 
