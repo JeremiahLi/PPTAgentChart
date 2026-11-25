@@ -107,7 +107,7 @@ python -m pip download -d .pi\wheels\py314 --only-binary=:all: ^
 pdf2image / PyPDF2 / pypdfium2）、plotly、markdown、svgwrite、requests 整条链、
 python-docx，以及 contourpy / fonttools / pyparsing 各自的旧版本。
 
-这些**当前代码一个都没 import**（`.pi/renderer/docx_in.py` 读 Word 用的是
+这些**当前代码一个都没 import**（`engine/ingest/docx_in.py` 读 Word 用的是
 `zipfile` + `lxml` 直接解 OOXML，不需要 python-docx）。
 
 删掉的 25 个包暂时存放在 `.pi/work/_wheels-backup/`（该目录不入库），确认镜像能正常

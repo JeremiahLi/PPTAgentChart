@@ -185,8 +185,8 @@ def main():
 
 def _auto_generate_notes(deck, source_path: str | None = None):
     """为 deck 自动生成备注。"""
-    import speaker_notes
-    import doc_analyzer
+    from ..plan import doc_analyzer
+    from . import speaker_notes
 
     # 尝试读取分析表
     analysis_text = None
@@ -242,7 +242,7 @@ def _auto_generate_notes(deck, source_path: str | None = None):
             has_hierarchy=doc_analyzer.has_hierarchy(text),
         )
 
-        from ppt_dsl import SlideNotes
+        from ..dsl.ppt_dsl import SlideNotes
         notes_list.append(SlideNotes(
             data_gaps=[n.text for n in sn.notes if n.category == "data"],
             viz_suggestions=[n.text for n in sn.notes if n.category == "viz"],

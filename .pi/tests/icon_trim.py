@@ -241,9 +241,10 @@ def rebuild_index(styles: dict[str, list[str]]) -> dict:
 # ---------------------------------------------------------------- 校验
 def verify(styles: dict[str, list[str]]) -> list[str]:
     """删除之后必须还成立的事情。返回问题清单（空 = 通过）。"""
-    sys.path.insert(0, str(REPO / "renderer"))
+    sys.path.insert(0, str(REPO.parent))   # 仓库根
     import importlib
-    import iconlib
+
+    from engine.render import iconlib
     importlib.reload(iconlib)          # 丢掉进程内的旧磁盘快照
 
     problems = []
@@ -353,12 +354,14 @@ def main() -> int:
         import subprocess
         py = sys.executable
         tmp = REPO / "work" / "_trim_check.json"
-        subprocess.run([py, str(REPO / "renderer" / "merge.py"),
+        subprocess.run([py, "-m", "engine.render.merge",
                         str(REPO / ".pi" / "skills" / "ppt-common" / "examples"),
-                        str(tmp), "--title", "裁剪后自检"], check=True)
-        r = subprocess.run([py, str(REPO / "renderer" / "render.py"), str(tmp),
+                        str(tmp), "--title", "裁剪后自检"],
+                       check=True, cwd=str(REPO.parent))
+        r = subprocess.run([py, "-m", "engine.render.render", str(tmp),
                             "-o", str(REPO / "work" / "_trim_check.pptx"), "--qc"],
-                           capture_output=True, text=True, encoding="utf-8")
+                           capture_output=True, text=True, encoding="utf-8",
+                           cwd=str(REPO.parent))
         tail = (r.stdout or "").strip().splitlines()[-1:] or ["(无输出)"]
         print(f"渲染自检：{tail[0][:160]}")
         return r.returncode

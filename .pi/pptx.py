@@ -24,9 +24,9 @@
    这样回炉时能按 code 统计、能 diff，不必靠模型"读懂一句话"。
 3. **指纹判新旧**：状态里存内容的 sha256 前 12 位，不比 mtime——
    `git checkout` 会改 mtime 但内容没变，比 mtime 会误报过期。
-4. **只做适配层**：内部仍调 `.pi/renderer/*.py`，不复制任何判定逻辑
-   （长度上限、几何容量、字体口径全部留在原处）。以后把 renderer 拆成 engine 库时，
-   只需要改本文件的 `STAGE_SCRIPTS`，对外契约不变。
+4. **只做适配层**：内部调 `python -m engine.<阶段>`，不复制任何判定逻辑
+   （长度上限、几何容量、字体口径全部留在 `engine/` 里）。
+   阶段与模块的对应只有 `STAGE_MODULES` 一张表，换实现只改这里，对外契约不变。
 
 门禁分两级，别混：
   **requires**（缺了直接报错）—— 上游产物是当前阶段的前提，缺了跑下去必然白跑；
@@ -73,11 +73,11 @@ STATUS_LABEL = {
 }
 
 # 子进程脚本位置：内部拆分时只改这里
-STAGE_SCRIPTS = {
-    "docx_in": ".pi/renderer/docx_in.py",
-    "plan": ".pi/renderer/plan.py",
-    "budgets": ".pi/renderer/budgets.py",
-    "build": ".pi/renderer/build.py",
+STAGE_MODULES = {
+    "docx_in": "engine.ingest.docx_in",
+    "plan": "engine.plan.plan",
+    "budgets": "engine.plan.budgets",
+    "build": "engine.build",
 }
 
 
@@ -388,11 +388,14 @@ def run_child(script_key: str, argv: list[str], *, dry: bool = False, quiet: boo
 
     子进程的 stdout 原样转发（报告是模型要读的东西），只摘掉它自己的 RESULT 行。
     """
-    script = REPO / STAGE_SCRIPTS[script_key]
-    if not script.exists():
+    module = STAGE_MODULES[script_key]
+    # 用 `-m 包.模块` 而不是文件路径：阶段脚本都住 engine/ 包里，模块内部用的是
+    # 相对导入，按路径执行会以「无父包」身份跑，一上来就 ImportError。
+    file = REPO / module.replace(".", "/")
+    if not (file.with_suffix(".py").exists() or (file / "__main__.py").exists()):
         return 127, {"ok": False, "reason": "script_missing",
-                     "errors": [f"找不到 {STAGE_SCRIPTS[script_key]}"]}, 0.0
-    cmd = [PY, str(script)] + argv
+                     "errors": [f"找不到模块 {module}"]}, 0.0
+    cmd = [PY, "-m", module] + argv
     if dry:
         print(f"  [dry-run] {' '.join(cmd)}")
         return 0, {"ok": True, "dry_run": True}, 0.0

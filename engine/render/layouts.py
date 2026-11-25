@@ -332,7 +332,7 @@ def icon_resolvable(name: str | None) -> bool:
     hit = _ICON_CACHE.get(name)
     if hit is None:
         try:
-            from iconlib import resolve_icon as _spec
+            from .iconlib import resolve_icon as _spec
             hit = bool(_spec(name))
         except Exception:
             hit = False
@@ -911,7 +911,7 @@ def render_toc(slide, m):
              color="text", bold=True, spacing=1.1)
     text_box(slide, 0.8, 1.12, 6, 0.4, "CONTENTS", size=FONT_SIZES["toc_en"],
              color="text_light")
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     n = len(m.items)
     rows = max(1, math.ceil(n / 2))
     x0 = TOC_X0
@@ -1427,7 +1427,7 @@ def compare_desc_box(summary: str | None, n_points: int,
 
 
 def render_compare_3col(slide, m):
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     content_header(slide, m.title, m.summary)
     g = COMPARE_GEOM
     gap = COMPARE_GAP
@@ -1535,7 +1535,7 @@ def numbered_geom(m) -> dict:
 
 
 def render_numbered_cards(slide, m):
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     content_header(slide, m.title, m.summary)
     g = numbered_geom(m)
     draw_aux(slide, getattr(m, "callout", None) or [], g["fr"])
@@ -1699,7 +1699,7 @@ def render_flow(slide, m):
 
 def _render_flow_cycle(slide, m, y):
     """环形循环图：节点绕椭圆一周，中心枢纽展示 loop_note，节点间顺时针箭头闭环。"""
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     n = len(m.steps)
     # 环形流程**高度吃紧**：辅区一律放右栏，环拿到完整高度。
     # （原来是底部横条，环被压成扁椭圆 —— 这就是「原本不错的流程图变难看」的原因。）
@@ -1870,7 +1870,7 @@ def _draw_flow_wrap(slide, g) -> None:
 
 def _render_flow_linear(slide, m, y):
     """线性流程：编号徽章 + 图标 + 强连接箭头；步数 > FLOW_WRAP_AT 时折成两行。"""
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     g = flow_linear_geom(m)
     g["loop_note"] = getattr(m, "loop_note", None) if g["rows"] == 2 else None
     draw_aux(slide, getattr(m, "callout", None) or [], g["fr"])
@@ -1960,7 +1960,7 @@ def hierarchy_geom(m) -> dict:
 
 def _render_hierarchy_contain(slide, m, y):
     """包含（树形）：顶部根节点实心条，向下连线分流到 N 个子模块卡片。"""
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     g = hierarchy_geom(m)
     fr, n, cw, ch = g["fr"], g["n"], g["cw"], g["ch"]
     draw_aux(slide, getattr(m, "callout", None) or [], fr)
@@ -2009,7 +2009,7 @@ def _render_hierarchy_contain(slide, m, y):
 
 def _render_hierarchy_progressive(slide, m, y):
     """递进（阶梯）：子模块左低右高逐级上升，编号徽章 + 上升箭头。"""
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     n = len(m.nodes)
     gap = 0.42
     co = getattr(m, "callout", None) or []
@@ -2323,7 +2323,7 @@ def render_panel_2col(slide, m):
     两块内容上下堆叠会在下半页留出半页空白 —— 这里一律左右分置：
     左模块 + 右模块；每个模块 = 色条 + 图标/标题 + 浅色总结块 + 要点/迷你明细表。
     """
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     y = content_header(slide, m.title, m.summary)
     co = getattr(m, "callout", None) or []
     # 双模块本身就是左右分置；再让出右栏会把两个迷你表挤瘪，所以辅区走底部横条
@@ -2399,7 +2399,7 @@ def grid_geom(m) -> dict:
 
 def render_grid_2x2(slide, m):
     """2x2 网格：强制 2×2 排列的四象限/矩阵布局。"""
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
 
     y = content_header(slide, m.title, m.summary)
     g = grid_geom(m)
@@ -3049,7 +3049,7 @@ def render_figure(slide, m):
              radius=0.10, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
         text_box(slide, box[0], box[1], box[2], box[3],
                  f"缺图：{m.image}\n（路径不存在或格式不受支持；Word 里的图先跑 "
-                 f".pi/renderer/docx_in.py 抽到 .pi/work/media/，EMF/WMF 会原样嵌入）",
+                 f"engine/ingest/docx_in.py 抽到 .pi/work/media/，EMF/WMF 会原样嵌入）",
                  size=FONT_SIZES["caption"], color="orange", align=PP_ALIGN.CENTER,
                  anchor=MSO_ANCHOR.MIDDLE)
     if m.caption:
@@ -3137,7 +3137,7 @@ def _render_callout(slide, notes, bottom: float, height: float | None = None) ->
     卡片型版式原来整页只有"一组卡片"，信息量被容器锁死；callout 让它们多装一块信息。
     **高度按内容自适应**（`callout_height`），说明文字放不下时逐档缩到 7.5pt。
     """
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     n = len(notes)
     if not n:
         return bottom
@@ -3175,7 +3175,7 @@ def _render_rail(slide, notes, x: float, y: float, w: float, bottom: float) -> f
     **左右分置**（不是上下堆叠）：主内容的高度完整留给主内容，
     卡片高度按内容走，不拉长成空框。
     """
-    from theme import ACCENT_CYCLE
+    from .theme import ACCENT_CYCLE
     n = len(notes)
     if not n:
         return y

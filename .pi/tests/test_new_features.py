@@ -8,26 +8,21 @@ import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "renderer"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))   # 仓库根
 
-import doc_analyzer
-import outline
-import planner
-import qc
-import speaker_notes
-from doc_analyzer import SourceModule
-from outline import (
-    ChartSuggestion, DeckOutline, DensityTarget, SectionPlan,
-    SlidePlan, SlideType
-)
-from ppt_dsl import (
+from engine.dsl.ppt_dsl import (
     HighlightBox, QuadrantCell, QuadrantGridSlide, SlideNotes, Slide,
     StatementSlide, validate_dict
 )
-from theme import FONT_SIZES
-
-# 确保能导入兄弟模块
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "renderer"))
+from engine.plan import doc_analyzer, outline, planner
+from engine.plan.doc_analyzer import SourceModule
+from engine.plan.outline import (
+    ChartSuggestion, DeckOutline, DensityTarget, SectionPlan,
+    SlidePlan, SlideType
+)
+from engine.qc import qc
+from engine.render import speaker_notes
+from engine.render.theme import FONT_SIZES
 
 
 # ---------------- 外观主题（deck.style） ----------------
@@ -37,7 +32,7 @@ class TestThemeStyles:
 
     def test_registry_is_the_five_agreed_themes(self):
         """注册表只许这 5 套（用户 2026-10 明确要求扩容，别再随手加实验色板）。"""
-        import theme
+        from engine.render import theme
         assert list(theme._THEMES) == ["style-harness", "blue-business",
                                        "bright", "forest", "violet-tech"]
         # 默认主题永远是 style-harness，且主色仍是藏青（老产出不变）
@@ -47,7 +42,7 @@ class TestThemeStyles:
     def test_every_palette_is_key_complete(self):
         """色板 22 键必须对齐：`layouts._c()` 是 COLORS.get(name, name)，
         少一个键就会把 "cyan" 当色值去解析（RGBColor 直接抛错）。"""
-        import theme
+        from engine.render import theme
         base = set(theme._BASE_COLORS)
         for name, spec in theme._THEMES.items():
             pal = spec["colors"]
@@ -60,8 +55,7 @@ class TestThemeStyles:
 
     def test_white_text_on_accent_colors_is_readable(self):
         """色带上压白字（layered_stack 的层标签、徽章）不能低于默认主题的基线。"""
-        import theme
-
+        from engine.render import theme
         def lum(h):
             def ch(v):
                 v = v / 255
@@ -85,15 +79,15 @@ class TestThemeStyles:
 
     def test_apply_style_unknown_falls_back(self):
         """deck.style 写了别的名字（含曾出现过的 terra/celadon）→ 一律回退默认。"""
-        import theme
+        from engine.render import theme
         for name in ("terra", "celadon", "不存在的主题", None, ""):
             assert theme.apply_style(name) == "style-harness"
             assert theme.COLORS["primary"] == "2760A4"
 
     def test_each_theme_switches_palette_in_place(self):
         """切主题后 layouts 看到的必须是新色板（同一个 dict 对象）。"""
-        import layouts
-        import theme
+        from engine.render import layouts
+        from engine.render import theme
         for name, spec in theme._THEMES.items():
             theme.apply_style(name)
             assert theme.CURRENT_STYLE == name
@@ -105,8 +99,8 @@ class TestThemeStyles:
 
     def test_apply_style_in_place_keeps_bindings(self):
         """layouts 持有的是同一份 dict/list 对象——apply_style 必须原地生效。"""
-        import layouts
-        import theme
+        from engine.render import layouts
+        from engine.render import theme
         assert layouts.COLORS is theme.COLORS
         theme.apply_style("bright")
         assert layouts.COLORS is theme.COLORS
@@ -114,7 +108,7 @@ class TestThemeStyles:
         theme.apply_style(theme.DEFAULT_STYLE)
 
     def test_round_trip_restores_default(self):
-        import theme
+        from engine.render import theme
         baseline = dict(theme._THEMES["style-harness"]["colors"])
         theme.COLORS["primary"] = "000000"           # 模拟被切走污染
         theme.apply_style("style-harness")
@@ -123,7 +117,7 @@ class TestThemeStyles:
     def test_palette_rejects_unknown_key(self):
         """派生色板时写错键名必须当场报错，而不是渲染到一半才炸。"""
         import pytest as _pytest
-        import theme
+        from engine.render import theme
         with _pytest.raises(KeyError):
             theme._palette(primary_typo="123456")
 
@@ -134,14 +128,14 @@ class TestCardStyles:
     """deck.card 卡片长相：5 种已登记、未登记名回退 flat、**不改任何文字几何**。"""
 
     def test_registry(self):
-        import theme
+        from engine.render import theme
         assert theme.CARD_STYLES == ("flat", "outline", "tinted",
                                      "accent-left", "accent-top")
         assert theme.DEFAULT_CARD == "flat"
         assert theme.apply_card_style(None) == "flat"
 
     def test_unknown_falls_back(self):
-        import theme
+        from engine.render import theme
         for name in ("shadow", "rounded", "", None, "不存在的长相"):
             assert theme.apply_card_style(name) == "flat"
         theme.apply_card_style(theme.DEFAULT_CARD)
@@ -155,8 +149,8 @@ class TestCardStyles:
         import tempfile
         from pathlib import Path
 
-        import render
-        import theme
+        from engine.render import render
+        from engine.render import theme
         from pptx import Presentation
         from pptx.util import Emu
 
@@ -201,9 +195,8 @@ class TestCardStyles:
         import zipfile
         from pathlib import Path
 
-        import render
-        import theme
-
+        from engine.render import render
+        from engine.render import theme
         try:
             with tempfile.TemporaryDirectory() as td:
                 for style in theme._THEMES:

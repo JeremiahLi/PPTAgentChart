@@ -7,12 +7,10 @@ import os
 import sys
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "renderer"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))   # 仓库根
 
-import doc_analyzer
-import planner
-import speaker_notes
-import outline
+from engine.plan import doc_analyzer, outline, planner
+from engine.render import speaker_notes
 
 
 # ---------------- doc_analyzer ----------------

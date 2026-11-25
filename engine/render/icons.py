@@ -5,7 +5,7 @@
 由它把 SVG 路径转成 PowerPoint 自定义几何图形（custGeom），真矢量、可改色、可缩放。
 
 图标库（tabler 单库 / outline + filled）、命名解析与检索命令见 .pi/assets/icons/README.md。
-这个文件只保留渲染器真正调用的那一个函数 —— 检索走 `python .pi/renderer/iconlib.py --search`，
+这个文件只保留渲染器真正调用的那一个函数 —— 检索走 `python -m engine.render.iconlib --search`，
 别再在门面上加转发层。
 """
 from __future__ import annotations

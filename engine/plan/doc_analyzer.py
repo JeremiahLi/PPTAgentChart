@@ -447,7 +447,7 @@ _ANALYSIS_HEAD = """# 输入分析
 > - 缺口：没有就写 `无`；有就写"缺什么 + 找谁要"，研讨型会在交付时原样列给用户。
 >
 > 改完直接重跑（**不带** `--emit-analysis`）：
-> `python .pi/renderer/plan.py .pi/work/analysis.md -o .pi/work/outline.json --title "..." --brief seminar`
+> `python -m engine.plan.plan .pi/work/analysis.md -o .pi/work/outline.json --title "..." --brief seminar`
 
 | 章节 | 模块 | 核心结论 | 论据 | 缺口 |
 |---|---|---|---|---|

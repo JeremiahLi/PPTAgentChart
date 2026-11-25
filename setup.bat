@@ -85,8 +85,8 @@ echo.
 echo ============================================================
 echo   DONE. All dependencies installed and verified.
 echo.
-echo   Render a deck:
-echo     %PY% .pi\renderer\build.py .pi\work\slides -o .pi\out\deck.pptx --source .pi\work\analysis.md
+echo   Render a deck (run from the repo root; engine/ is a package):
+echo     %PY% -m engine.build .pi\work\slides -o .pi\out\deck.pptx --source .pi\work\analysis.md
 echo   pi checks these dependencies automatically on startup
 echo   (.pi\extensions\deps-bootstrap.ts); run this script to fix a broken env.
 echo   Need an extra package? See .pi\wheels\README.md for the mirror command.

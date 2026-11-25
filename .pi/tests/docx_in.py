@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Word 输入预处理回归：`.pi/renderer/docx_in.py`。
+"""Word 输入预处理回归：`engine/ingest/docx_in.py`。
 
 锁定四件用户明确要求 / 踩过的事：
   1. **修订记录不呈现**：`w:ins`（插入）按"接受所有修订"保留，`w:del`、批注一律丢弃；
@@ -20,9 +20,9 @@ import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "renderer"))
+sys.path.insert(0, str(REPO.parent))   # 仓库根：engine 包在这里，REPO 仍是 .pi/
 
-import docx_in  # noqa: E402
+from engine.ingest import docx_in  # noqa: E402
 
 _failures: list[str] = []
 

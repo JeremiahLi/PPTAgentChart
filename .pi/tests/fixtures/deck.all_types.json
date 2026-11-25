@@ -291,7 +291,7 @@
       "image": "tests/fixtures/sample-diagram.emf",
       "caption": "回归用最小 EMF：物理尺寸 1.6 × 0.9 in，取自头部 rclFrame。",
       "points": [
-        "EMF/WMF 由 renderer/docx_in.py 从 .docx 里原样抽出",
+        "EMF/WMF 由 engine/ingest/docx_in.py 从 .docx 里原样抽出",
         "image 路径按仓库根目录解析"
       ],
       "footer_note": "结论：Word 里的矢量图必须原样嵌入，不许转栅格。"

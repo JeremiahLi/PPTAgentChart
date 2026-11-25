@@ -24,10 +24,10 @@ import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "renderer"))
+sys.path.insert(0, str(REPO.parent))   # 仓库根：engine 包在这里，REPO 仍是 .pi/
 
-import layouts            # noqa: E402
-from ppt_dsl import ChartSlide  # noqa: E402
+from engine.dsl.ppt_dsl import ChartSlide  # noqa: E402
+from engine.render import layouts          # noqa: E402
 from pptx import Presentation   # noqa: E402
 from pptx.util import Inches    # noqa: E402
 

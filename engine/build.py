@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """一条命令跑完：合并 → 质检 → 渲染 → 字体自检。
 
-    python .pi/renderer/build.py .pi/work/slides -o .pi/out/主题.pptx \
+    python -m engine.build .pi/work/slides -o .pi/out/主题.pptx \
         --brief seminar --style blue-business --source .pi/work/analysis.md
 
 为什么要有它：以前一轮迭代要敲 3 条命令（merge、render --qc、font_audit），
@@ -185,13 +185,13 @@ def main(argv: list[str] | None = None) -> int:
     # ④ 字体自检（同一进程内，省一次启动与一条命令）
     font_bad = 0
     if not args.no_font_check:
-        import fontcheck
+        from .qc import fontcheck
         font_bad = len(fontcheck.audit(Path(args.out), verbose=False))
 
     elapsed = time.perf_counter() - t0
     if font_bad:
         print(f"字体: FAIL，{font_bad} 处不符合「微软雅黑 + Times New Roman」，"
-              f"跑 python .pi/renderer/fontcheck.py {args.out} 看细节", file=sys.stderr)
+              f"跑 python -m engine.qc.fontcheck {args.out} 看细节", file=sys.stderr)
         _print_result(False, reason="font_check", font_issues=font_bad, out=args.out)
         return 0
     if args.quiet:

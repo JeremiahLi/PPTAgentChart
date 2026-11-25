@@ -9,8 +9,8 @@ description: 汇报型 PPT 的写作方向 —— 一页一个主张、结论先
 不会去翻原文。目标：**每页一个主张，第一眼就能看懂结论。**
 
 配套的公共规范在 `ppt-common`（出图通道 / 14 版式契约 / 图标 / 通用铁律），
-机检规则在 `.pi/renderer/briefs/briefing.yaml`（**只有 `check` 段，很短，扫一眼即可**；
-写作规范以本文件为准）。开工前读三样：`ppt-common`、`.pi/renderer/briefs/briefing.yaml`、
+机检规则在 `.pi/briefs/briefing.yaml`（**只有 `check` 段，很短，扫一眼即可**；
+写作规范以本文件为准）。开工前读三样：`ppt-common`、`.pi/briefs/briefing.yaml`、
 `.pi/skills/ppt-common/examples-all.json`。**别每生成一页就去读一个范例文件。**
 
 ## 取舍规则（与研讨型的分界线）
@@ -86,7 +86,7 @@ python .pi/pptx.py build -o .pi/out/主题.pptx --title 标题 \
 汇报型默认建议 `blue-business` 或 `style-harness` 配色 + `outline`/`accent-top` 卡片：
 对决策者说话时，克制的色调比多色更容易被当成结论而不是装饰。选型表见 `ppt-common`。
 
-`build.py` 的质检会按 `.pi/renderer/briefs/briefing.yaml` 的 `check` 段查红线并报 warning：
+`build.py` 的质检会按 `.pi/briefs/briefing.yaml` 的 `check` 段查红线并报 warning：
 页数下限与"超 30 页先问用户"、每页支撑论据上限、标题禁用词。**warning 不是可选项**，
 那是这个方向的取舍约定（**但页数没有上限：不许靠删内容压页数**）。
 

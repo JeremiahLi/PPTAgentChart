@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """字体自检 CLI（薄壳）。
 
-真正的实现在 `.pi/renderer/fontcheck.py`：`build.py` 渲染完会**在同一个进程里**
+真正的实现在 `engine/qc/fontcheck.py`：`build.py` 渲染完会**在同一个进程里**
 顺手跑一遍，不必再敲一条命令；这个文件只负责保留历史命令行的行为与文案：
 
     python .pi/tests/font_audit.py .pi/out/我的汇报.pptx
@@ -17,9 +17,9 @@ import sys
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "out"
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "renderer"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # 仓库根
 
-import fontcheck  # noqa: E402
+from engine.qc import fontcheck  # noqa: E402
 
 audit = fontcheck.audit
 

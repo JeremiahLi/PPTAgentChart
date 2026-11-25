@@ -404,7 +404,7 @@ def _check_figure(slide_no, s, errors, warnings):
         errors.append(_item(
             slide_no, "figure", "image",
             f"图片不存在或读不到：{s.image}（按仓库根解析为 {path}）。"
-            f"Word 里的图先跑 `python .pi/renderer/docx_in.py <输入.docx> -o .pi/work/input.md`，"
+            f"Word 里的图先跑 `python -m engine.ingest.docx_in <输入.docx> -o .pi/work/input.md`，"
             f"它会去修订并把 EMF/WMF 原样抽到 .pi/work/media/，"
             f"再把 `media/NN-xxx.emf` 写进 `image`"))
         return
@@ -634,7 +634,7 @@ def _brief_checks(deck, errors, warnings, source_path: str | None = None):
     """按 deck.brief 指定的写作方向查红线。
 
     只出 warning —— 这些是方向的取舍约定，不是几何错误，不该拦渲染。
-    规约写在 .pi/renderer/briefs/<name>.yaml 的 check 段，加方向不用改这里。
+    规约写在 .pi/briefs/<name>.yaml 的 check 段，加方向不用改这里。
     """
     name = getattr(deck, "brief", None)
     if not name:

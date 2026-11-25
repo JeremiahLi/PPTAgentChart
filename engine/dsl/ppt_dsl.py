@@ -42,7 +42,7 @@ CAP_SLACK = 8         # 再额外给 8 字余量（短文本的百分比会被�
 def _layouts():
     """延迟导入渲染器（schema 层不该在 import 时就拽进 python-pptx）。"""
     try:
-        import layouts
+        from ..render import layouts
         return layouts
     except Exception:              # 纯 schema 环境（无 pptx）：跳过几何校验
         return None
@@ -567,7 +567,7 @@ class FigureSlide(BaseModel):
     转栅格再嵌进去就会糊。本版式的 `image` 走「**逐字节原封不动嵌入**」的通道
     （`layouts.add_image`：EMF/WMF 手工挂 ImagePart，不重绘、不转格式）。
 
-    Word 里的图先用 `python .pi/renderer/docx_in.py <docx> -o .pi/work/input.md --media .pi/work/media`
+    Word 里的图先用 `python -m engine.ingest.docx_in <docx> -o .pi/work/input.md --media .pi/work/media`
     抽到 `.pi/work/media/`，再把 `media/NN-xxx.emf` 写进 `image`（路径相对仓库根目录解析）。
     """
     slide_type: Literal["figure"]
@@ -576,7 +576,7 @@ class FigureSlide(BaseModel):
     image: Str = Field(..., min_length=3, max_length=260,
                        description="图片路径（相对仓库根目录或绝对路径），"
                                    "支持 png/jpg/gif/bmp/tiff/**emf/wmf**（矢量图原样嵌入）；"
-                                   "Word 里的图先用 .pi/renderer/docx_in.py 抽到 .pi/work/media/")
+                                   "Word 里的图先用 engine/ingest/docx_in.py 抽到 .pi/work/media/")
     caption: Optional[Str] = Field(None, max_length=140,
                                    description="图注：一句话说清这张图在证明什么，放在图下方")
     points: list[Str] = Field(default_factory=list, max_length=3,
@@ -924,7 +924,7 @@ class Deck(BaseModel):
                                   "写别的名字一律回退 flat")
     brief: Optional[Str] = Field(None, max_length=40,
                                  description="写作方向：seminar=研讨型 / briefing=汇报型，"
-                                             "见 .pi/renderer/briefs/。决定取舍规则与页数预算，"
+                                             "见 .pi/briefs/。决定取舍规则与页数预算，"
                                              "不影响外观")
     slides: list[Slide] = Field(..., min_length=1)
     # 备注：每页对应的建议（可选，与 slides 一一对应）

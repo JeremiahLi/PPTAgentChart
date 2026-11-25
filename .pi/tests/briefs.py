@@ -3,7 +3,7 @@
 
 两个方向共用一套版式与配色，差别只在「怎么取舍原文」—— 所以规则必须能机检，
 否则就退化成一句口号：Agent 说自己是汇报型，产出的却是逐条堆料。
-本测试断言 `.pi/renderer/briefs/*.yaml` 的 check 段真的被 qc 执行了。
+本测试断言 `.pi/briefs/*.yaml` 的 check 段真的被 qc 执行了。
 
 跑法：`python .pi/tests/briefs.py`（纯离线，不需要 Office）
 """
@@ -13,12 +13,12 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "renderer"))
+sys.path.insert(0, str(REPO.parent))   # 仓库根：engine 包在这里，REPO 仍是 .pi/
 
-import briefs          # noqa: E402
-import qc              # noqa: E402
-import theme           # noqa: E402
-from ppt_dsl import validate_dict  # noqa: E402
+from engine.dsl import briefs              # noqa: E402
+from engine.dsl.ppt_dsl import validate_dict  # noqa: E402
+from engine.qc import qc                   # noqa: E402
+from engine.render import theme            # noqa: E402
 
 _failures: list[str] = []
 

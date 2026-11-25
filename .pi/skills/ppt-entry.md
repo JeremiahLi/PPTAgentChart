@@ -79,7 +79,7 @@ python .pi/pptx.py check     # 只质检不出文件（改完页先看红线）
 
 1. `Skill(ppt-common)` —— 公共规范（必加载）。
 2. 按方向 `Skill(ppt-seminar)` **或** `Skill(ppt-briefing)`（二选一，别两个都加载）。
-3. Read `.pi/renderer/briefs/<方向>.yaml` —— 机检红线（页数、图表占比、标题禁用词）。
+3. Read `.pi/briefs/<方向>.yaml` —— 机检红线（页数、图表占比、标题禁用词）。
 
 然后按 ppt-common 的工作流走：
 **analyze → outline（给用户过目）→ budget → 成批生成（一个文件 5-8 页）→
@@ -151,14 +151,14 @@ python .pi/pptx.py outline --title "主题" --brief seminar
 
 ```bash
 # 缓存命中时直接复用
-python .pi/renderer/plan.py .pi/work/analysis.md -o .pi/work/outline.json --check-cache
+python -m engine.plan.plan .pi/work/analysis.md -o .pi/work/outline.json --check-cache
 ```
 
 大纲可以一键落成一份**结构稿**（每页合法、正文全是「待补：」占位）：
 
 ```bash
-python .pi/renderer/merge.py --from-outline .pi/work/outline.json -o .pi/work/deck.json
-python .pi/renderer/render.py .pi/work/deck.json -o .pi/out/骨架.pptx   # 给自己钉页序
+python -m engine.render.merge --from-outline .pi/work/outline.json -o .pi/work/deck.json
+python -m engine.render.render .pi/work/deck.json -o .pi/out/骨架.pptx   # 给自己钉页序
 ```
 
 > 这份骨架**不是成品，也不给用户看**（慢档只在评审大纲时打断用户一次）：它的作用是
@@ -223,10 +223,12 @@ python .pi/pptx.py budget     # 大纲定稿后跑；照预算写，校验必放
 
 ## 边界
 
-- 出图只走 `.pi/pptx.py`（老命令 `python .pi/renderer/build.py .pi/work/slides -o <out.pptx>
-  --source .pi/work/analysis.md` 仍然等价，单步调试时可用）。
+- 出图只走 `.pi/pptx.py`。底层等价命令是
+  `python -m engine.build .pi/work/slides -o <out.pptx> --source .pi/work/analysis.md`，
+  单步调试/脚本调用时用；`renderer/` 旧路径已拆除（2026-11），照旧写成
+  `python .pi/renderer/…` 会直接报文件不存在。
 - 阶段顺序、上游是否过期由 `.pi/work/state.json` 判定。**不要手工改/删它**来绕过拦截——
   确实要硬闯用 `--force`，RESULT 里会留 `forced: true`，交付时可追溯。
 - 旧的确定性流水线（`src/ppt/`、`SPEC/`、`tools/`、`demo/`、`run/`）**已删除**，
-  别再按旧文档去找；本仓库只走 `.pi/renderer/` 这一条出图通道。
+  别再按旧文档去找；本仓库只走 `engine/` 这一条出图通道。
 - 不要手写 python-pptx / OOXML / HTML→pptx。

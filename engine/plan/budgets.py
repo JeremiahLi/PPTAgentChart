@@ -18,9 +18,9 @@
 - **写作区间** = 静态下限（含 briefs 方向红线的密度下限）到写作目标的 ~90%。
 
 用法（全部从仓库根执行）：
-  python .pi/renderer/budgets.py .pi/work/outline.json -o .pi/work/budgets.md
-  python .pi/renderer/budgets.py --all -o .pi/work/budgets-all.md   # 全版式参考表
-  python .pi/renderer/budgets.py --selfcheck                        # 自证"照预算写必过校验"
+  python -m engine.plan.budgets .pi/work/outline.json -o .pi/work/budgets.md
+  python -m engine.plan.budgets --all -o .pi/work/budgets-all.md   # 全版式参考表
+  python -m engine.plan.budgets --selfcheck                        # 自证"照预算写必过校验"
 """
 from __future__ import annotations
 
@@ -396,7 +396,7 @@ def _page_block(no: int, sl: dict) -> str:
     return "\n".join(out)
 
 
-HEADER = """# 字数预算表（由 .pi/renderer/budgets.py 生成，勿手改）
+HEADER = """# 字数预算表（由 engine/plan/budgets.py 生成，勿手改）
 
 来源：本表所有数字由渲染器**同一套几何函数**算出（拦截 schema 校验路径探测），
 与 `build.py` 校验报的「每条最多约 X 字」同口径。
@@ -424,7 +424,7 @@ def render_outline(outline_path: str, out_path: str) -> int:
 
 
 def render_all(out_path: str) -> int:
-    blocks = [HEADER.replace("（由 .pi/renderer/budgets.py 生成，勿手改）",
+    blocks = [HEADER.replace("（由 engine/plan/budgets.py 生成，勿手改）",
                              "（全版式参考表）"), ""]
     n = 0
     for st, cls in CLS.items():

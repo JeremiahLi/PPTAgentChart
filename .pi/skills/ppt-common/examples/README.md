@@ -20,10 +20,10 @@
 
 ```bash
 # 合并成整份 deck 并校验 schema
-python .pi/renderer/merge.py .pi/skills/ppt-common/examples /tmp/_ex_deck.json --title "智能体评测平台建设方案"
+python -m engine.render.merge .pi/skills/ppt-common/examples /tmp/_ex_deck.json --title "智能体评测平台建设方案"
 
 # 渲染 + 质检（有 error 会阻止渲染）
-python .pi/renderer/render.py /tmp/_ex_deck.json -o /tmp/_ex.pptx --qc
+python -m engine.render.render /tmp/_ex_deck.json -o /tmp/_ex.pptx --qc
 ```
 
 两份都 `OK`、`errors` 为空，才说明范例本身是对的。

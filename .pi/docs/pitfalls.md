@@ -4,7 +4,7 @@
 > 生成时只读 `.pi/skills/ppt-entry.md` → `ppt-common` → 方向技能 → `examples-all.json`。
 >
 > 规则分三层，各自只放该放的东西：**判据（schema 上限 / 几何函数）在代码里、
-> 机检阈值在 `.pi/renderer/briefs/*.yaml` 的 `check` 段、写作规范在 `.pi/skills/*.md`** ——
+> 机检阈值在 `.pi/briefs/*.yaml` 的 `check` 段、写作规范在 `.pi/skills/*.md`** ——
 > 同一句话不要在三处都写一遍（历史上"12 版式""60~140 字"就是这样漂移的）。
 >
 > 每条都写清**错在哪、现在怎么做的、为什么别改回去**。编号会随增删变化，**引用请引用标题**。
@@ -45,7 +45,7 @@ statement.body 一个都没标这三种情况。
 规则本来只写在 SKILL.md 里（"2-4 行的结论"），qc 只查了"有没有 / 是否 <30 字"，
 于是 LLM 写出一堆废话、"1.2 节给出…"、复述标题 —— 规则等于没生效。
 现在 `qc._check_summary` 逐条点名：**40~80 字 / 2~3 句 / 禁坐标词与自指 / 禁填充语 /
-不复述标题**（全 warning）。改词表就在 `.pi/renderer/qc.py` 的 `_SUMMARY_COORD` /
+不复述标题**（全 warning）。改词表就在 `engine/qc/qc.py` 的 `_SUMMARY_COORD` /
 `_SUMMARY_FILLER`，注意别把"上下文"当成自指（`上文|下文` 会误报）。
 区间 2026-09 由 60~140 收到 40~80：页头是每页最贵的版面（多一行 ≈ 一张卡的高度），
 而结论段与卡片描述的信息高度重叠 —— 现在只留「判断 + 关键数字」，机制下放卡片。
@@ -72,7 +72,7 @@ statement.body 一个都没标这三种情况。
 （v19 的教训）：把正文压成短语，版面看着满、信息却被抽干。`qc._check_density_floor`
 给每类版式定了正文下限 —— statement.body **150+**、compare 每栏 desc **45+**、
 numbered_cards 每卡 desc **40+**、layered_stack 每层 desc **30+**、flow 每步 desc **16+**、
-hierarchy node.desc **20+**。阈值集中在 `.pi/renderer/qc.py` 的 `_*_DESC_MIN` /
+hierarchy node.desc **20+**。阈值集中在 `engine/qc/qc.py` 的 `_*_DESC_MIN` /
 `_STATEMENT_BODY_MIN`，要调改那里。
 **卡片型版式要 description 就要狠心少放 callout**：callout 占 0.96in，会把卡片描述空间
 压掉一大截（numbered_cards 因此有了 `footer_note` 这条更省的出路）。
@@ -277,7 +277,7 @@ hierarchy node.desc **20+**。阈值集中在 `.pi/renderer/qc.py` 的 `_*_DESC_
 
 ## 23. Word 输入：修订记录不呈现；EMF/WMF 原样嵌入不许转格式
 
-（2026-09，用户需求）素材是 `.docx` 时走 **`.pi/renderer/docx_in.py`**（stdlib `zipfile` +
+（2026-09，用户需求）素材是 `.docx` 时走 **`engine/ingest/docx_in.py`**（stdlib `zipfile` +
 `ElementTree`，**零新依赖**，不要引入 python-docx）：
 
 - **修订记录不呈现**：按「接受所有修订」的口径 —— `w:ins` 保留内容、`w:del` 与
@@ -523,7 +523,7 @@ flow 每步 desc ≥16、hierarchy node.desc ≥20、panel_2col 每模块 summar
 - **别去掉拦截探测改手写几何调用**：拦截保证预算与校验零漂移；`key_groups` / `end`
   两处没走 `_cap_hint`，在 budgets.py 里按校验器同款公式复算，改那两个校验器时
   要同步改 budgets.py（已注明）。
-- **几何改动后跑 `python .pi/renderer/budgets.py --selfcheck`**：15 个代表性配置
+- **几何改动后跑 `python -m engine.plan.budgets --selfcheck`**：15 个代表性配置
   "照预算写满 → 真实校验必放行"，几何一变它就是回归线。
 
 

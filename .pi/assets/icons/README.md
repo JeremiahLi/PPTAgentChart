@@ -86,13 +86,13 @@ tabler/outline → tabler/filled
 ## 5. 命令行
 
 ```bash
-python .pi/renderer/iconlib.py 齿轮                  # 中文别名检索
-python .pi/renderer/iconlib.py --search brain        # 英文名 / 标签检索
-python .pi/renderer/iconlib.py --search 安全 --lib tabler
-python .pi/renderer/iconlib.py --json --search data  # 结构化输出（供程序消费）
-python .pi/renderer/iconlib.py --show 齿轮            # 看某名字最终解析成哪个图标
-python .pi/renderer/iconlib.py --libs                # 列出库与风格
-python .pi/renderer/iconlib.py --stats               # 总数 / 索引时间 / 别名数 / 分组统计
+python -m engine.render.iconlib 齿轮                  # 中文别名检索
+python -m engine.render.iconlib --search brain        # 英文名 / 标签检索
+python -m engine.render.iconlib --search 安全 --lib tabler
+python -m engine.render.iconlib --json --search data  # 结构化输出（供程序消费）
+python -m engine.render.iconlib --show 齿轮            # 看某名字最终解析成哪个图标
+python -m engine.render.iconlib --libs                # 列出库与风格
+python -m engine.render.iconlib --stats               # 总数 / 索引时间 / 别名数 / 分组统计
 ```
 
 ## 6. 维护

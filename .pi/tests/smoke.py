@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""离线回归冒烟测试（纯 stdlib + renderer，`python .pi/tests/smoke.py` 即可跑）。
+"""离线回归冒烟测试（纯 stdlib + engine，`python .pi/tests/smoke.py` 即可跑）。
 
 它锁定五件不该倒退的事：
   1. 14 种 slide_type 全都能过 schema + 几何质检 + 渲染；
@@ -10,7 +10,7 @@
   5. **任何内容都不许越出容器**：panel_2col 的迷你表、表格页的表体与 note、
      figure 的 EMF 原样嵌入（用户复现的 P3/P4 两处溢出就是这条的反例）。
 
-**不需要模型**：只走 renderer 的纯 L0 路径。
+**不需要模型**：只走 engine 的纯 L0 路径。
 """
 from __future__ import annotations
 
@@ -21,13 +21,11 @@ import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO / "renderer"))
+sys.path.insert(0, str(REPO.parent))   # 仓库根：engine 包在这里，REPO 仍是 .pi/
 
-import layouts                             # noqa: E402
-import qc                                  # noqa: E402
-import render                              # noqa: E402
-import theme                               # noqa: E402
-from ppt_dsl import load_deck, validate_dict  # noqa: E402
+from engine.dsl.ppt_dsl import load_deck, validate_dict  # noqa: E402
+from engine.qc import qc                                # noqa: E402
+from engine.render import layouts, render, theme         # noqa: E402
 from pydantic import ValidationError       # noqa: E402
 
 FIXTURE = REPO / "tests" / "fixtures" / "deck.all_types.json"
@@ -78,7 +76,7 @@ def main() -> int:
     model, errs = _validate(deck)
     _check("schema 通过", model is not None and not errs, "; ".join(errs[:1]))
 
-    print("== 3. 几何质检（.pi/renderer/qc.py）==")
+    print("== 3. 几何质检（engine/qc/qc.py）==")
     report, code = _check_deck(deck)
     errs = report.get("errors")
     _check("qc 0 error", code == 0 and isinstance(errs, list) and not errs,
@@ -707,7 +705,7 @@ def main() -> int:
         # 写了备注 → python-pptx 才按模板建备注母版，而模板自带 lang="en-US"。
         # 这个母版建得比 apply_document_language 晚，曾经漏改 → fontcheck 判 FAIL，
         # 于是"只要带 --source（自动生成备注）就永远交不了稿"。锁住它。
-        from ppt_dsl import SlideNotes
+        from engine.dsl.ppt_dsl import SlideNotes
         with tempfile.TemporaryDirectory() as td:
             noted = load_deck(str(FIXTURE))
             noted.speaker_notes = [SlideNotes(content_gaps=["测试缺口"])
@@ -726,8 +724,8 @@ def main() -> int:
                             for x in _bad_lang(z.read(n))])
 
     print("== 18. 规划链路：outline → deck 骨架 → 渲染（这条链以前是断的）==")
-    import outline as outline_mod
-    from outline import SlidePlan, SlideType, _shell
+    from engine.plan import outline as outline_mod
+    from engine.plan.outline import SlidePlan, SlideType, _shell
 
     plans = [SlidePlan(title=f"待补测试页标题{i}", slide_type=t,
                        conclusion="这是一句待补的结论。")
@@ -754,7 +752,7 @@ def main() -> int:
 
     print()
     print("== 19. 容量上限按**条目数**动态校验（schema 不再说一套、几何做一套）==")
-    from ppt_dsl import (EndSlide, FlowSlide, KeyGroupsSlide, MatrixSlide,
+    from engine.dsl.ppt_dsl import (EndSlide, FlowSlide, KeyGroupsSlide, MatrixSlide,
                          NumberedCardsSlide, StatementSlide, TableSlide,
                          TimelineSlide)
     _long = ("这是一段用于测试容量校验的正文，字数必须够多才能触发拦截，"
@@ -825,7 +823,7 @@ def main() -> int:
         for f in _failures:
             print(f"  - {f}")
         return 1
-    print("[PASS] 全部通过 —— renderer 离线链路无回归")
+    print("[PASS] 全部通过 —— engine 离线链路无回归")
     return 0
 
 

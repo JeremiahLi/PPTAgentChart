@@ -20,15 +20,16 @@ description: PPT 制作的公共规范（出图通道 / 19 版式字段契约 / 
   = 合并 + 质检 + 渲染 + 字体自检（默认原生可编辑图表；要高质感图加 `--chart-mode mpl`）；
   `--source` 不用写，`.pi/work/analysis.md` 在就自动带上。
 - 只质检不出文件：`pptx.py check`
-- 下面这些**等价的老命令**仍可用（单步调试、脚本调用时用），正常流程不必拆开敲：
-  `render.py <deck.json> -o <out.pptx> --qc` / `merge.py <slides_dir> <out.json>` /
-  `ppt_dsl.py <deck.json>`（只看 schema）
+- 单步调试时才拆开敲（都是包模块，**从仓库根**用 `python -m` 运行）：
+  `python -m engine.render.render <deck.json> -o <out.pptx> --qc` /
+  `python -m engine.render.merge <slides_dir> <out.json>` /
+  `python -m engine.dsl.ppt_dsl <deck.json>`（只看 schema）
 - **禁止**直接调 python-pptx、禁止手写 .pptx XML、禁止 HTML→pptx。
 
 ### 输入是 Word（`.docx`）时：先跑一次预处理
 
 ```bash
-python .pi/renderer/docx_in.py <输入.docx> -o .pi/work/input.md          # 图片落在 .pi/work/media/
+python -m engine.ingest.docx_in <输入.docx> -o .pi/work/input.md          # 图片落在 .pi/work/media/
 ```
 
 它一次做完两件事，**别用别的办法凑**：
@@ -310,7 +311,7 @@ markdown 里图片按原位置留了 `![图N](media/NN-xxx.emf)` 标记，排页
 | table | title 4–32 · summary 40–80 · headers 2–6 · **rows 1–12**（行高按行数自动压紧；每行长度=headers；单元格按列容量，超 2 倍容量会被点名）· **side 0–4{label≤12, value≤18, text≤60, icon}**（右侧辅区，填了它表格自动收窄）· note≤120 · hero_col（可选，填表头文字 → 该列整列加底色强调） |
 | chart | title 6–32（判断句）· summary 40–80 · chart{type: column/bar/line/pie/doughnut/radar, categories 2–10, series 1–3, unit≤6} · insights 2–4{text 8–70, icon} · **detail_headers 2–4 + detail_rows 0–10**（图表下方明细表，数据点 ≤5 时必填）· footer_note≤64 |
 | panel_2col | title 6–32（判断句）· summary 40–80 · panels = 2{label 2–14, **summary 16–110**（模块顶部总结陈述段）· icon · points 0–6 每条≤44 **或** headers 0–4 + rows 0–6（迷你明细表）· 二者至少一个} · **callout 0–4** · footer_note≤64 |
-| figure | title 6–32（判断句）· summary 40–80 · **image**（png/jpg/**emf/wmf**，路径按 `.pi/` 根解析；Word 里的图先跑 `.pi/renderer/docx_in.py` 抽到 `.pi/work/media/`）· caption≤140（图注，一句话说清图在证明什么）· points 0–3 每条≤44（右侧纵栏）· footer_note≤64 |
+| figure | title 6–32（判断句）· summary 40–80 · **image**（png/jpg/**emf/wmf**，路径按 `.pi/` 根解析；Word 里的图先跑 `engine/ingest/docx_in.py` 抽到 `.pi/work/media/`）· caption≤140（图注，一句话说清图在证明什么）· points 0–3 每条≤44（右侧纵栏）· footer_note≤64 |
 | timeline | title 6–32（判断句）· summary 40–80 · **milestones 3–12**{label 2–14, time≤12（时间标注，可选）, **desc 10–120**（随节点数浮动，≥7 个自动改竖排；写前查预算表）, icon} · **callout 0–4** · footer_note≤64（时序/里程碑语义用，事件沿中轴上下交替；步骤判定/分支仍用 flow） |
 | funnel | title 6–32（判断句）· summary 40–80 · **stages 3–8**{label 2–10, value≤10（该层数量，大字）, **desc 10–100**（口径/转化率/流失原因，相邻两层一除就是转化率）, icon} · **callout 0–4** · footer_note≤64（转化/衰减语义用，层层收窄） |
 | matrix | title 6–32（判断句）· summary 40–80 · **col_labels 2–4** 每个≤8 · **rows 2–4**{label≤8, cells 数=列数{title 2–16, desc 4–90, icon}} · footer_note≤64（两维交叉分类用，grid_2x2 的 m×n 泛化；不支持 callout） |
@@ -364,7 +365,7 @@ key_groups 每条要点 ≥ 8。
   外观只归 `theme.py` 管，别在页面里写 hex、也别建议"这一页用红色"。
 - **字体不用你管，也不许你指定**：渲染器统一写死「中文微软雅黑 + 西文 Times New Roman」
   （都是系统自带，仓库不带字体包）。别去改字号字体、别提"换成某字体"这类建议 ——
-  字体是外观主题的一部分，改它要改 `.pi/renderer/theme.py`，不是改 deck.json。
+  字体是外观主题的一部分，改它要改 `engine/render/theme.py`，不是改 deck.json。
 - **放不下是拆页，不是删原文数字或限定条件。**
 - 命令失败先读报错再改，禁止盲目重试超过 2 次。
 
@@ -379,5 +380,5 @@ key_groups 每条要点 ≥ 8。
 > `examples/` 目录本身也可以随时合并成整份（改动范例后重生成）：
 >
 > ```bash
-> python .pi/renderer/merge.py .pi/skills/ppt-common/examples .pi/skills/ppt-common/examples-all.json --title "版式范例合集"
+> python -m engine.render.merge .pi/skills/ppt-common/examples .pi/skills/ppt-common/examples-all.json --title "版式范例合集"
 > ```

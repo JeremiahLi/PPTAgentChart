@@ -234,7 +234,7 @@ def main():
                     help="卡片长相，**覆盖** --style 的预设绑定："
                          + " / ".join(f"{k}={v}" for k, v in theme.CARD_LABELS.items()))
     ap.add_argument("--brief", choices=briefs.available(), default=None,
-                    help="写作方向（研讨型/汇报型）：渲染外的取舍规约，见 .pi/renderer/briefs/")
+                    help="写作方向（研讨型/汇报型）：渲染外的取舍规约，见 .pi/briefs/")
     ap.add_argument("--from-outline", default=None,
                     help="从 outline.json 生成最简 deck（结构化大纲优先）")
     ap.add_argument("--with-notes", action="store_true",
@@ -286,7 +286,7 @@ def main():
 
 def _merge_from_outline(args):
     """从 outline.json 生成最简 deck。"""
-    import outline
+    from ..plan import outline
 
     ol = outline.load_outline(args.from_outline)
     deck_dict = outline.outline_to_deck_cli(ol)

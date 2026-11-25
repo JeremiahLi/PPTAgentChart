@@ -9,9 +9,9 @@ description: 研讨型 PPT 的写作方向 —— 输入资料的论点论据全
 **无遗漏**地呈现在页面上，**不替读者做取舍**。
 
 配套的公共规范在 `ppt-common`（出图通道 / 14 版式契约 / 图标 / 通用铁律），
-机检规则在 `.pi/renderer/briefs/seminar.yaml`（**只有 `check` 段，很短，扫一眼即可**；
+机检规则在 `.pi/briefs/seminar.yaml`（**只有 `check` 段，很短，扫一眼即可**；
 写作规范以本文件为准，不要在两个文件里重复读同一段话）。开工前读三样：
-`ppt-common`、`.pi/renderer/briefs/seminar.yaml`、`.pi/skills/ppt-common/examples-all.json`。
+`ppt-common`、`.pi/briefs/seminar.yaml`、`.pi/skills/ppt-common/examples-all.json`。
 **别每生成一页就去读一个范例文件** —— 那是 40 页 deck 白搭 40 次读盘与上下文。
 
 ## 铁律一：资料的论点论据全部上页，一条不丢
@@ -197,7 +197,7 @@ python .pi/pptx.py build -o .pi/out/主题.pptx --title 标题 \
     --brief seminar --style violet-tech --card accent-left
 ```
 
-质检会按 `.pi/renderer/briefs/seminar.yaml` 的 `check` 段查红线并报 warning：
+质检会按 `.pi/briefs/seminar.yaml` 的 `check` 段查红线并报 warning：
 资料量对应的页数、表格/图表占比、图表种类数、必备版式。**warning 不是可选项。**
 `--source .pi/work/analysis.md` 再核一遍**输入覆盖度**（丢了哪块内容、少了哪个数字）——
 研讨型交稿前这一项必须过，见铁律一。
