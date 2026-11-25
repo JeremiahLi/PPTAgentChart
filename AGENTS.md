@@ -2,16 +2,36 @@
 
 本仓库是**基于 pi 的 PPT 制作 Agent**（内网部署、不可联网的私有模型）：把文档/思路做成
 高信息密度、图表丰富的 .pptx。
-出图唯一通道是 `.pi/renderer/`（PPT-DSL 结构化 JSON → pptx），**禁止手写 python-pptx / OOXML**。
+出图唯一通道是 `engine/`（PPT-DSL 结构化 JSON → pptx），**禁止手写 python-pptx / OOXML**。
 
-> **目录结构（2026-10 调整）**：工程主体 `renderer/`、`assets/`、`tests/`、`work/`、`out/`、
-> `docs/`、`wheels/` 全部位于 **`.pi/` 下**；仓库根只留 `AGENTS.md`、`requirements.txt`、`setup.bat`。
+> **代码分层（2026-11-25）**：可执行代码是仓库根的 `engine/` 包，不再是 `.pi/` 下的散脚本。
+>
+> | 目录 | 装什么 |
+> |---|---|
+> | `engine/dsl/` | 契约层：`ppt_dsl.py`（19 版式 schema）、`briefs.py`（方向规约加载） |
+> | `engine/plan/` | 规划层：`doc_analyzer` → `planner` → `outline` / `plan` / `budgets` |
+> | `engine/render/` | 渲染层：`theme` / `charts` / `icons` / `iconlib` / `layouts` / `merge` / `render` / `speaker_notes` |
+> | `engine/qc/` | 检查层：`qc.py`（几何/密度/红线/覆盖度）、`fontcheck.py` |
+> | `engine/ingest/` | 摄入层：`docx_in.py`（去修订 + 抽图） |
+> | `engine/build.py` | 编排层：merge → qc → render → fontcheck 一条命令 |
+> | `engine/paths.py` | 资源根路径唯一来源（`.pi/` 下 briefs / assets / work / out） |
+>
+> **`.pi/renderer/*.py` 现在只是转发桩**（每个 12 行，把旧路径指到 `engine/…`），
+> 让既有命令、测试、文档零改动继续可用。桩的完整性由 `python .pi/tests/shims.py` 守住
+> （对象同一性 + CLI 真的执行 + `.pi` 不进 `sys.path`）。删桩的前提是文档命令全部改走
+> `python -m engine.…`，属于独立一轮改动。
+>
+> **`.pi/` 下不放可执行代码**：一旦 `.pi` 进了 `sys.path`，`.pi/pptx.py` 会把第三方
+> `pptx` 库顶掉（`'pptx' is not a package`），而且只在特定 import 顺序下才炸。
+
+> **目录结构（2026-10 调整）**：配置、技能、测试、数据在 **`.pi/` 下**（`assets/`、`tests/`、
+> `work/`、`out/`、`docs/`、`wheels/`、`briefs/`、`skills/`、`prompts/`）；
+> 仓库根放 `AGENTS.md`、`requirements.txt`、`setup.bat` 和 `engine/`。
 > **所有命令一律从仓库根执行，路径必须带 `.pi/` 前缀**：
-> `python .pi/renderer/build.py .pi/work/slides -o .pi/out/x.pptx --source .pi/work/analysis.md`
+> `python .pi/pptx.py build -o .pi/out/x.pptx`
 > （一条命令 = 合并 + 质检 + 渲染 + 字体自检；拆开跑用 `merge.py` + `render.py --qc`）。
-> 这么做的原因只有一个——根目录清爽；代价是每条路径多一层。
-> 代码侧零改动即可工作：`renderer/` 与 `tests/` 全部用 `__file__` 推父目录（`_BASE`/`REPO`），
-> `layouts.resolve_image_path` 先试 `_BASE` 再试 cwd，整体平移一层后相对关系不变。
+> 文件位置不再靠 `dirname(dirname(__file__))` 反推——`engine/paths.py` 是唯一来源，
+> 模块再往子目录搬也不会把 `.pi` 算错一层。
 
 > **自动提交约定（2026-11-05 起，强制执行）**：每次对代码/文档/规范做了一轮优化调整，
 > 任务收尾时必须当场 `git add` + `git commit`（commit 信息一律**简体中文**、概括本次改动）+
@@ -45,9 +65,10 @@ budget 就出图）。`--force` 可硬闯，`RESULT` 里留 `forced: true` 可�
 `untracked` 是迁移态：产物在但无指纹记录（新入口上线前跑的老流程），门禁放行但告警，
 重跑一次就收录。
 
-**`.pi/renderer/*.py` 全部保留可用**（单步调试、脚本调用照旧），`pptx.py` 只是适配层：
-它不复制任何判定逻辑（字数上限、几何容量、字体口径仍在原处），内部拆分时只改
-`STAGE_SCRIPTS`。入口层回归：`python .pi/tests/entry.py`（纯标准库，没装 python-pptx 也能跑）。
+**`.pi/renderer/*.py` 现在只是转发桩**（真身在 `engine/`，见开头的代码分层表），
+`.pi/pptx.py` 只是适配层：它不复制任何判定逻辑（字数上限、几何容量、字体口径仍在原处），
+内部拆分时只改 `STAGE_SCRIPTS`。入口层回归：`python .pi/tests/entry.py`（纯标准库，
+没装 python-pptx 也能跑）；桩的回归：`python .pi/tests/shims.py`。
 
 ## 谁负责什么
 
@@ -240,7 +261,13 @@ requirementsFile: "requirements.txt",        // 清单唯一真相，脚本里�
   当前代码一个都没 import——`docx_in.py` 读 Word 用的是 `zipfile` + `lxml` 直接解 OOXML，
   不需要 python-docx。要恢复某项能力，按 README 从镜像补回来，别再维护一个全量清单。
 
-## 渲染器（.pi/renderer/）
+## 渲染器（真身 `engine/`，旧路径 `.pi/renderer/` 是转发桩）
+
+> 下表用旧路径写，是因为**命令照旧这么敲**（桩会转到 `engine/` 里对应文件）。
+> 想知道某个文件现在住哪：
+> `engine/dsl/`（schema、briefs）· `engine/plan/`（分析/规划/预算）·
+> `engine/render/`（主题/图表/图标/版式/合并/渲染/备注）· `engine/qc/`（质检/字体）·
+> `engine/ingest/`（docx 预处理）· `engine/build.py`（编排）。
 
 | 文件 | 作用 |
 |---|---|
