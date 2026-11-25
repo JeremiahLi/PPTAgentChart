@@ -340,6 +340,34 @@ def apply_theme_fonts(prs) -> None:
             root, xml_declaration=True, encoding="UTF-8", standalone=True)
 
 
+def patch_notes_master_language(prs) -> bool:
+    """备注母版**已经存在**时，把它的 `lang="en-US"` 补成中文。
+
+    为什么需要这一步：`apply_document_language` 跑在所有页之前，那时还没有备注母版
+    （python-pptx 是第一次访问 `slide.notes_slide` 才按默认模板建出来）。只要这份
+    deck 真的写了备注，母版就已经带着模板默认的 `en-US` 生成了 —— 于是
+    `fontcheck` 判 FAIL，慢档直接交不了稿（这是"有备注就必挂"的老 bug）。
+
+    只遍历包里已有的部件，**绝不访问 `prs.notes_master`**：那个属性会当场建一个
+    空备注母版，没写备注的 deck 会平白多出两个部件。
+    """
+    a_ns = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    for part in prs.part.package.iter_parts():
+        if "notesMaster" not in str(part.partname):
+            continue
+        root = getattr(part, "_element", None)
+        if root is None:
+            continue
+        for tag in ("rPr", "defRPr", "endParaRPr"):
+            for el in root.iter(f"{{{a_ns}}}{tag}"):
+                if el.get("lang") != LANG_MAIN:
+                    el.set("lang", LANG_MAIN)
+                if not el.get("altLang"):
+                    el.set("altLang", LANG_ALT)
+        return True
+    return False
+
+
 def apply_document_language(prs) -> None:
     """把默认文本样式 / 母版 / 版式里的 `lang="en-US"` 改成中文。
 
@@ -355,9 +383,9 @@ def apply_document_language(prs) -> None:
     for master in prs.slide_masters:
         parts.append(master.part)
         parts.extend(layout.part for layout in master.slide_layouts)
-    # notesMaster 故意不碰：python-pptx 访问 `prs.notes_master` 会**当场建一个**
-    # 默认笔记母版，只为改 lang 就多出一个部件不划算；备注页正文由
-    # `layouts.mark_text_language(notes_slide)` 逐段处理。
+    # notesMaster 这里不碰：python-pptx 访问 `prs.notes_master` 会**当场建一个**
+    # 默认笔记母版，只为改 lang 就多出一个部件不划算。但真的写了备注时它会被
+    # 建出来并带着 en-US —— 那一步由渲染收尾的 `patch_notes_master_language` 补。
     for part in parts:
         root = getattr(part, "_element", None)
         if root is None:                     # 非 XmlPart（理论上不会走到）

@@ -701,6 +701,30 @@ def main() -> int:
                    all(v == ("Times New Roman", "微软雅黑") for v in faces.values())
                    and hans.get("Hans") == "微软雅黑", f"{faces} Hans={hans.get('Hans')}")
 
+            _check("没写备注时不该凭空多出备注母版（两个部件也是成本）",
+                   not any("notesMaster" in n for n in z.namelist()))
+
+        # 写了备注 → python-pptx 才按模板建备注母版，而模板自带 lang="en-US"。
+        # 这个母版建得比 apply_document_language 晚，曾经漏改 → fontcheck 判 FAIL，
+        # 于是"只要带 --source（自动生成备注）就永远交不了稿"。锁住它。
+        from ppt_dsl import SlideNotes
+        with tempfile.TemporaryDirectory() as td:
+            noted = load_deck(str(FIXTURE))
+            noted.speaker_notes = [SlideNotes(content_gaps=["测试缺口"])
+                                   for _ in noted.slides]
+            out = Path(td) / "notes.pptx"
+            render.build_pptx(noted, str(out), add_speaker_notes=True)
+            with zipfile.ZipFile(out) as z:
+                nm = [n for n in z.namelist() if "notesMaster" in n and n.endswith(".xml")]
+                xml = z.read(nm[0]) if nm else b""
+                _check("写了备注就有备注母版，且里面的 en-US 已改中文",
+                       bool(nm) and b'lang="en-US"' not in xml,
+                       f"部件={nm} 残留 en-US 次数={xml.count(b'lang=\"en-US\"')}")
+                _check("备注页正文仍逐段带 lang（母版归一不替代逐段标记）",
+                       not [f"{n}: {x}" for n in z.namelist()
+                            if n.startswith("ppt/notesSlides/") and n.endswith(".xml")
+                            for x in _bad_lang(z.read(n))])
+
     print("== 18. 规划链路：outline → deck 骨架 → 渲染（这条链以前是断的）==")
     import outline as outline_mod
     from outline import SlidePlan, SlideType, _shell

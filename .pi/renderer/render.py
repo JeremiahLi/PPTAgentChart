@@ -88,6 +88,8 @@ def build_pptx(deck, out_path: str, add_speaker_notes: bool = True):
         # python-pptx 不写 endParaRPr；Office 2007 在选中外框 / 光标停在段尾时，
         # Ribbon 字体框读的就是它 —— 缺了仍然乱码，哪怕每个 run 都标了语言。
         layouts.mark_text_language(slide)
+    # 备注母版是写第一页备注时按模板建的，带着 en-US；建出来了才补，没建就不补。
+    theme.patch_notes_master_language(prs)
     prs.save(out_path)
 
 

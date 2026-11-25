@@ -700,8 +700,16 @@ def _run_build(a, *, check: bool) -> int:
     child_ok = child.get("ok", code == 0)
     if code != 0 or not child_ok:
         reason = child.get("reason") or ("runtime_error" if code != 0 else "unknown")
+        hint = "按上面报告里的 slide/field 逐条改，改完重跑"
+        if reason == "warnings_not_zero":
+            # 这里的 warnings 字段是入口层的上游告警；deck 自己的 warning 清单只在
+            # 上面那行紧凑报告里。不点明的话，模型会以为"只差几条 untracked 告警"
+            # 直接 --force 放行，把真正的内容问题漏掉。
+            n = child.get("warnings")
+            hint = (f"deck 还有 {n} 条 warning 未归零（清单在上面的报告里，按 slide/field 改）；"
+                    "本 RESULT 的 warnings 只列入口层告警，不是 deck 的")
         return fail(stage, _map_reason(reason),
-                    f"未通过：{reason}", hint="按上面报告里的 slide/field 逐条改，改完重跑",
+                    f"未通过：{reason}", hint=hint,
                     warnings=warns, details=child.get("errors"), child_reason=reason, ran=True)
 
     if not check:
