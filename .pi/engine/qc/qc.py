@@ -12,7 +12,9 @@ import re
 
 from ..dsl import briefs, ppt_dsl
 from ..paths import PI_ROOT
-from ..render import layouts, theme
+from ..render import geom, theme
+# 注意：qc 只要「算多大」，不要「画上去」。几何一律从 geom 取——
+# 这样查溢出不必拉起 python-pptx（geom 不 import 渲染器）。
 from ..render.layouts import (CLAIM_MAX, chart_bottom, col_widths, compare_desc_box,
                      flow_linear_geom, hierarchy_geom, layered_geom, numbered_geom,
                      panel_slack, split_body_groups, split_claim, split_sections,
@@ -91,7 +93,7 @@ def _check_emphasis(slide_no, slide_type, field, text, warnings, require_span=Fa
 # 最终规则是「同字号 + 加粗 + 强调色」，两条都做成可机检的：
 #   1. 每张卡的第一句会被自动加粗染色成**关键句** —— 写太长整张卡都成重点；
 #   2. 长文本要有 2 处以上**关键短语**（`**短语**：正文…`）—— 170+ 字一整段没人读得下去。
-# 渲染侧对应 layouts.split_claim / split_sections / card_paras（同一份切法）。
+# 渲染侧对应 geom.split_claim / split_sections / card_paras（同一份切法）。
 _CARD_LONG = 170          # 超过这个字数就该有 2 处以上关键短语
 _SECTION_MIN = 2          # 长卡至少要有几处关键短语
 
@@ -399,16 +401,16 @@ def _check_figure(slide_no, s, errors, warnings):
     `layouts.add_image` → `_add_vector_picture` 保证（字节原样、不转格式），
     这里只查"图在不在"和"这一页是不是只有一个容器"。
     """
-    path = layouts.resolve_image_path(s.image)
+    path = geom.resolve_image_path(s.image)
     if not os.path.isfile(path):
         errors.append(_item(
             slide_no, "figure", "image",
             f"图片不存在或读不到：{s.image}（按仓库根解析为 {path}）。"
-            f"Word 里的图先跑 `python -m engine.ingest.docx_in <输入.docx> -o .pi/work/input.md`，"
+            f"Word 里的图先跑 `python .pi/cli.py run engine.ingest.docx_in <输入.docx> -o .pi/work/input.md`，"
             f"它会去修订并把 EMF/WMF 原样抽到 .pi/work/media/，"
             f"再把 `media/NN-xxx.emf` 写进 `image`"))
         return
-    size = layouts.image_size_in(path)
+    size = geom.image_size_in(path)
     if size is None:
         warnings.append(_item(
             slide_no, "figure", "image",
@@ -422,17 +424,17 @@ def _check_figure(slide_no, s, errors, warnings):
         return
     # 右栏只有 1~2 条要点时，卡片刻度到最大也填不满 —— 实测会空出 2in 空气。
     if s.points:
-        fr, _ = layouts.figure_area(s.summary, bool(s.caption), True)
+        fr, _ = geom.figure_area(s.summary, bool(s.caption), True)
         if fr["mode"] == "rail":
             _rh = fr["rail_bottom"] - fr["rail_top"]
-            _need = sum(layouts.point_rail_need(s.points, fr["rail_w"])) \
+            _need = sum(geom.point_rail_need(s.points, fr["rail_w"])) \
                 + 0.14 * (len(s.points) - 1)
-            _idle = _rh - _need * layouts.RAIL_GROW_MAX
+            _idle = _rh - _need * geom.RAIL_GROW_MAX
             if _idle > 0.90:
                 warnings.append(_item(
                     slide_no, "figure", "points",
                     f"右侧要点栏高 {_rh:.1f} in，{len(s.points)} 条要点写满也就占 "
-                    f"{_need * layouts.RAIL_GROW_MAX:.1f} in，还剩 {_idle:.1f} in 空着："
+                    f"{_need * geom.RAIL_GROW_MAX:.1f} in，还剩 {_idle:.1f} in 空着："
                     f"补到 3 条要点（每条 30 字以上，说清「图在证明什么 → 所以呢」），"
                     f"或把结论写进 caption 后改用 panel_2col 与相邻内容并页"))
 
@@ -453,12 +455,12 @@ def _check_panels(slide_no, s, warnings):
                                   f"{_PANEL_PT_MAX} 字：要点要短，细节挪进迷你表或总结段"))
         if p.rows:
             # 列宽与单元格容量都走渲染同款口径（layouts 的 PANEL_GAP/PANEL_PAD/PANEL_TBL_CELL）
-            _tw = (12.23 - layouts.PANEL_GAP) / 2 - 2 * layouts.PANEL_PAD
+            _tw = (12.23 - geom.PANEL_GAP) / 2 - 2 * geom.PANEL_PAD
             _w = col_widths(p.headers, p.rows, _tw, min_w=0.62)
             for r, row in enumerate(p.rows):
                 for c, val in enumerate(row):
-                    cap = max(6, layouts.cell_cap_chars(_w[c], 0.22,
-                                                        layouts.PANEL_TBL_CELL))
+                    cap = max(6, geom.cell_cap_chars(_w[c], 0.22,
+                                                        geom.PANEL_TBL_CELL))
                     if len(val) > 2 * cap:
                         warnings.append(_item(
                             slide_no, "panel_2col", f"panels[{j}].rows[{r}][{c}]",
@@ -515,9 +517,9 @@ def _cap_note(slide_no, s, field, label, n_chars: int, width: float, height: flo
     "降到最小档仍放不下" 时点名；没超容量但落了档的页面记进 `down`（供人工抽检，
     不刷 warning）。返回最小档容量（字数）。
     """
-    cap = layouts.cap_chars(width, height, steps)
-    size, _sp = layouts.step_for_len(n_chars, width, height, steps)
-    top = (steps or layouts.FIT_STEPS)[0][0]
+    cap = geom.cap_chars(width, height, steps)
+    size, _sp = geom.step_for_len(n_chars, width, height, steps)
+    top = (steps or geom.FIT_STEPS)[0][0]
     if n_chars > cap:
         warnings.append(_item(
             slide_no, s.slide_type, field,
@@ -577,20 +579,20 @@ def _check_claim_titles(slide_no, s, warnings):
 def _check_block_titles(slide_no, s, warnings):
     """块头标题要给右上角图标让位，否则压图标/折行。"""
     if isinstance(s, NumberedCardsSlide):
-        _g = layouts.numbered_geom(s)
+        _g = geom.numbered_geom(s)
         cw, has_icon = _g["cw"], _g["has_icon"]
         # 4 列窄卡不画图标，但**标题照样有宽度上限**（卡宽 - 内边距）——
         # 旧实现在这里直接 return，7~8 张卡的 4 列排版正好落在盲区里。
-        avail = (layouts.block_title_w(cw, layouts.NO_GUTTER, True) if has_icon
-                 else layouts.block_title_w(cw, layouts.NO_GUTTER, False))
+        avail = (geom.block_title_w(cw, geom.NO_GUTTER, True) if has_icon
+                 else geom.block_title_w(cw, geom.NO_GUTTER, False))
         base = FONT_SIZES["card_title"]
         for c in s.cards:
-            if layouts.text_w_in(c.name, base) <= avail:
+            if geom.text_w_in(c.name, base) <= avail:
                 continue
-            cap = layouts.chars_per_line(avail, base)
+            cap = geom.chars_per_line(avail, base)
             if has_icon:
                 _why = (f"右侧要给图标让出 "
-                        f"{layouts.CARD_ICON_RIGHT + layouts.ICON_TITLE_GAP:.2f}in，"
+                        f"{geom.CARD_ICON_RIGHT + geom.ICON_TITLE_GAP:.2f}in，"
                         f"可用 {avail:.2f}in（约 {cap} 字/行）—— 现在会压到图标或折成两行")
             else:
                 _why = (f"{len(s.cards)} 张卡排成 4 列、每卡只有 {cw:.2f}in 宽，"
@@ -599,14 +601,14 @@ def _check_block_titles(slide_no, s, warnings):
                 slide_no, "numbered_cards", "cards[].name",
                 f"卡片标题「{c.name}」放不下：{_why}。砍到 {cap} 字以内，机制细节挪到 desc"))
     elif isinstance(s, CompareSlide):
-        cw = layouts.compare_desc_box(s.summary, 0, False,
+        cw = geom.compare_desc_box(s.summary, 0, False,
                                       n_cols=len(s.columns))[0] + 0.56
-        avail = layouts.compare_label_w(cw, True)
+        avail = geom.compare_label_w(cw, True)
         base = FONT_SIZES["card_title"]
         for c in s.columns:
-            if layouts.text_w_in(c.label, base) <= avail:
+            if geom.text_w_in(c.label, base) <= avail:
                 continue
-            cap = layouts.chars_per_line(avail, base)
+            cap = geom.chars_per_line(avail, base)
             warnings.append(_item(
                 slide_no, "compare_3col", "columns[].label",
                 f"栏名「{c.label}」居中排、两侧要给块头图标让位，可用只有 {avail:.2f}in"
@@ -621,7 +623,7 @@ def _check_icons(slide_no, s, warnings):
     免得同一个错法在整份 deck 里反复出现（P6「Git 提交记录」= 别名「版本」没登记）。
     """
     for field, name in _iter_icons(s):
-        if layouts.icon_resolvable(name):
+        if geom.icon_resolvable(name):
             continue
         warnings.append(_item(
             slide_no, s.slide_type, field,
@@ -1015,11 +1017,11 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             # 只有降到最小档仍放不下才点名 —— 写满必须比写短更安全。
             _bw, _bh = statement_body_box(s)
             _cap_note(i, s, "body", "正文", len(s.body), _bw, _bh, warnings, down,
-                      steps=layouts.STATEMENT_STEPS)
+                      steps=geom.STATEMENT_STEPS)
             # 正文区留白：容量上限提到 700 字后，写 200 字就会在左下空出一条
-            _slack, _avail, _size = layouts.statement_slack(s)
+            _slack, _avail, _size = geom.statement_slack(s)
             if _slack > 0.80:
-                _more = layouts.slack_chars(_bw, _slack, _size)
+                _more = geom.slack_chars(_bw, _slack, _size)
                 warnings.append(_item(
                     i, "statement", "body",
                     f"正文区下方还空 {_slack:.1f} in（可用 {_avail:.1f} in，本页 {_size:g}pt）："
@@ -1043,15 +1045,15 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
                 # 0.30in，而 schema 允许 80 字（实测需 0.63in）—— 文字压出卡片下沿。
                 # 现在卡高随行数长、口径统一在 highlight_h，仍放不下就得点名。
                 if s.highlight.desc:
-                    _hg = layouts.statement_geom(s)
+                    _hg = geom.statement_geom(s)
                     _hl_w = _hg["rw"] - 0.66          # 卡内文本宽（按有图标，与 highlight_h 同口径）
-                    _hl_h = max(0.24, _hg["hl_h"] - layouts.HL_DESC_TOP - 0.06)
+                    _hl_h = max(0.24, _hg["hl_h"] - geom.HL_DESC_TOP - 0.06)
                     _cap_note(i, s, "highlight.desc", "高亮卡说明",
                               len(s.highlight.desc), _hl_w, _hl_h, warnings, down)
                 chart_pages += 1
         elif isinstance(s, CompareSlide):
             _co = getattr(s, "callout", None) or []
-            _aux = layouts.callout_height(_co)
+            _aux = geom.callout_height(_co)
             for j, col in enumerate(s.columns):
                 # 描述的可写高度随 summary 行数、要点条数与辅区落位变化，不能按常数算
                 _dw, _dh, _ = compare_desc_box(s.summary, len(col.points), bool(_co),
@@ -1078,7 +1080,7 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             # 环形只在「有 loop_note 且 3≤步数≤FLOW_WRAP_AT」时成立（见 render_flow）。
             # 旧判据只看 loop_note and n>=3，于是 8~12 步带 loop_note 的页面
             # **实际走两行线性流程**却一律跳过容量检查 —— 溢出 0.62in 也零警告。
-            if s.loop_note and 3 <= len(s.steps) <= layouts.FLOW_WRAP_AT:
+            if s.loop_note and 3 <= len(s.steps) <= geom.FLOW_WRAP_AT:
                 # 环形流程的节点描述框是固定的（窄卡片），不参与全局降档
                 total_chars += sum(len(st.desc) for st in s.steps)
             else:
@@ -1092,7 +1094,7 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             # 视觉层级检查：核心指标值必须是大字突出（≥18pt 在 theme.py FONT_SIZES 中定义）
             cells = [s.q_top_left, s.q_top_right, s.q_bottom_left, s.q_bottom_right]
             names = ["q_top_left", "q_top_right", "q_bottom_left", "q_bottom_right"]
-            g = layouts.grid_geom(s)
+            g = geom.grid_geom(s)
             for j, cell in enumerate(cells):
                 if not cell.value or len(cell.value.strip()) == 0:
                     warnings.append(_item(
@@ -1116,7 +1118,7 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
                     "或把格子数量从 4 个减到 2×2 真正需要的两格"))
             chart_pages += 1
         elif isinstance(s, TimelineSlide):
-            g = layouts.timeline_geom(s)
+            g = geom.timeline_geom(s)
             for j, ms in enumerate(s.milestones):
                 _cap_note(i, s, f"milestones[{j}].desc",
                           f"节点「{ms.label}」描述", len(ms.desc),
@@ -1124,14 +1126,14 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
                 total_chars += len(ms.desc)
             chart_pages += 1
         elif isinstance(s, FunnelSlide):
-            g = layouts.funnel_geom(s)
+            g = geom.funnel_geom(s)
             for j, st in enumerate(s.stages):
                 _cap_note(i, s, f"stages[{j}].desc", f"层「{st.label}」说明",
                           len(st.desc), g["desc_w"], g["desc_h"], warnings, down)
                 total_chars += len(st.desc)
             chart_pages += 1
         elif isinstance(s, MatrixSlide):
-            g = layouts.matrix_geom(s)
+            g = geom.matrix_geom(s)
             for r_i, row in enumerate(s.rows):
                 for c_i, cell in enumerate(row.cells):
                     _cap_note(i, s, f"rows[{r_i}].cells[{c_i}].desc",
@@ -1141,7 +1143,7 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
                     total_chars += len(cell.desc)
             chart_pages += 1
         elif isinstance(s, KeyGroupsSlide):
-            g = layouts.key_groups_geom(s)
+            g = geom.key_groups_geom(s)
             # 卡宽/卡高逐张取（末行单卡跨整行时与常规卡不同），不能只看第一张
             for cg in g["cards"]:
                 grp = s.groups[cg["i"]]
@@ -1158,7 +1160,7 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             for j, node in enumerate(s.nodes):
                 _cap_note(i, s, f"nodes[{j}].desc", f"子模块「{node.label}」描述",
                           len(node.desc), g["desc_w"], g["desc_h"], warnings, down,
-                          steps=layouts.HIER_STEPS)
+                          steps=geom.HIER_STEPS)
                 total_chars += len(node.desc)
             # 包含型层级图：卡片高度贴着文字走，留白不能靠拉长框解决
             if s.mode == "contain" and g["slack"] > 0.80:
@@ -1176,8 +1178,8 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             _w = col_widths(s.headers, s.rows, 12.23)
             for r, row in enumerate(s.rows):
                 for c, val in enumerate(row):
-                    cap = max(14, layouts.cell_cap_chars(_w[c], 0.30,
-                                                         layouts.CAP_MIN_SIZE))
+                    cap = max(14, geom.cell_cap_chars(_w[c], 0.30,
+                                                         geom.CAP_MIN_SIZE))
                     # 行高能容 2 行，只有超过 2 倍容量（会挤成 3 行以上）才算问题
                     if len(val) > 2 * cap:
                         warnings.append(_item(
@@ -1191,13 +1193,13 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             _side = getattr(s, "side", None) or []
             # 行高必须容得下单元格文字：python-pptx 里的行高只是"最小值"，
             # PowerPoint 打开时会按文字把行撑高，撑开的表就跑到页外/压住 note。
-            _tg = layouts.table_geom(len(s.rows), s.summary, bool(s.note),
+            _tg = geom.table_geom(len(s.rows), s.summary, bool(s.note),
                                      s.headers, s.rows, bool(_side))
             if _tg["cell_overflow"] > 0.02:
                 warnings.append(_item(
                     i, "table", "rows",
                     f"表格 {len(s.rows)} 行压紧后行高只有 {_tg['body_h']:.2f} in，"
-                    f"单元格文字在最小字号档（{layouts.TABLE_CELL_STEPS[-1][0]:g}pt）下仍高出 "
+                    f"单元格文字在最小字号档（{geom.TABLE_CELL_STEPS[-1][0]:g}pt）下仍高出 "
                     f"{_tg['cell_overflow']:.2f} in —— PowerPoint 打开时会把行撑开，"
                     f"整张表会溢出内容区并压住底部 `note`：删行/并页，"
                     f"或把长单元格挪进 `side`、`note`"))
@@ -1229,10 +1231,10 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             # 图表紧凑是按数据点算的：数据点少，下半页就会空 —— 补明细表或并页
             _cb = chart_bottom(s.summary, s.chart.type, len(s.chart.categories),
                                len(s.detail_rows or []), bool(s.footer_note))
-            if layouts.BODY_BOTTOM - _cb > 0.80:
+            if geom.BODY_BOTTOM - _cb > 0.80:
                 warnings.append(_item(
                     i, "chart", "detail_rows",
-                    f"图表页下半页还空 {layouts.BODY_BOTTOM - _cb:.1f} in：数据点只有 "
+                    f"图表页下半页还空 {geom.BODY_BOTTOM - _cb:.1f} in：数据点只有 "
                     f"{len(s.chart.categories)} 个 —— 用 `detail_headers` + `detail_rows` "
                     f"配一张明细表（指标/目标值/口径/验证方式），或和其它图并成一页"
                     f"（panel_2col 左右并排），别把半页留白交出去"))
@@ -1245,17 +1247,17 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
             # 模块内容超框：渲染器已把要点压到可读下限以下、或把迷你表行高压到
             # 保底线以下 —— 这正是用户复现的「P3 右侧框里的表格被挤出」的成因，
             # 只是现在不会真的画出框了，而是变成"字越来越小 + qc 点名"。
-            _over, _ptsz, _rowh, _ = layouts.panel_pressure(s)
+            _over, _ptsz, _rowh, _ = geom.panel_pressure(s)
             # 行高判据改成**相对自然行高**：旧判据是绝对下限 0.16+0.02，
             # 而自然行高 0.32 —— 被压到 0.183 照样"合格"，可那已经是行高腰斩、
             # 表格挤成一条线的观感了。低于自然行高的 3/4 就该删行。
-            _row_squeezed = _rowh < layouts.PANEL_TBL_ROW * 0.75
-            if _over > 0.05 and (_ptsz < layouts.PANEL_PT_FLOOR or _row_squeezed):
+            _row_squeezed = _rowh < geom.PANEL_TBL_ROW * 0.75
+            if _over > 0.05 and (_ptsz < geom.PANEL_PT_FLOOR or _row_squeezed):
                 warnings.append(_item(
                     i, "panel_2col", "panels",
                     f"模块内容超出模块框约 {_over:.1f} in（模块高 {_ph:.1f} in）："
                     f"渲染器只能把要点压到 {_ptsz:g}pt（可读下限 "
-                    f"{layouts.PANEL_PT_FLOOR:g}pt）、迷你表行高压到 {_rowh:.2f} in 才塞进去。"
+                    f"{geom.PANEL_PT_FLOOR:g}pt）、迷你表行高压到 {_rowh:.2f} in 才塞进去。"
                     f"删掉一条要点或几行明细；明细超过 8 行 / 要点超过 6 条就该"
                     f"**另起一页**用 `table` 或卡片页展开，不要挤在一个模块里"))
             elif _slack > 0.80:
@@ -1272,9 +1274,9 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
         elif isinstance(s, EndSlide):
             # 结尾页以前完全在 qc 视野之外：4 段各 200 字会把第 4 张卡推到 8.75in
             # （页高只有 7.5in）。现在几何统一由 end_geom 算，放不下就点名。
-            _eg = layouts.end_geom(list(s.sections or []), bool(s.contact))
+            _eg = geom.end_geom(list(s.sections or []), bool(s.contact))
             if not _eg["ok"]:
-                _last = layouts.END_TEXT_STEPS[-1][0]
+                _last = geom.END_TEXT_STEPS[-1][0]
                 warnings.append(_item(
                     i, "end", "sections",
                     f"{len(s.sections or [])} 段结尾正文降到 {_last:g}pt 仍需要 "
@@ -1285,7 +1287,7 @@ def check(deck, source_path: str | None = None, speed: str = "slow") -> dict:
                 _cap_note(i, s, f"sections[{j}].text", f"结尾段「{sec.heading}」",
                           len(sec.text), _eg["card_w"] - 0.62,
                           max(0.3, _eg["heights"][j] - 0.14), warnings, down,
-                          steps=layouts.END_TEXT_STEPS)
+                          steps=geom.END_TEXT_STEPS)
         # 密度下限 + 结论段必备：内容页标题下必须有 summary（核心结论段）
         summary = getattr(s, "summary", None)
         content_types = ("statement", "compare_3col", "numbered_cards",

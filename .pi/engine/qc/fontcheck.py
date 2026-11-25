@@ -3,7 +3,7 @@
 
 这里是**唯一实现**（`build.py` 渲染完直接调它，省一次进程启动与一条命令往返）；
 命令行入口仍保留在两个地方，行为完全一致：
-    python -m engine.qc.fontcheck .pi/out/我的汇报.pptx
+    python .pi/cli.py run engine.qc.fontcheck .pi/out/我的汇报.pptx
     python .pi/tests/font_audit.py .pi/out/我的汇报.pptx     # 薄壳，历史命令继续可用
 
 查五件事，任何一件不过就 exit 1：
@@ -148,7 +148,7 @@ def main(argv: list[str] | None = None, *, default_dir: Path | None = None) -> i
         args = sorted(p for p in Path(default_dir).glob("*.pptx")
                       if not p.name.startswith("~$"))
     if not args:
-        print("用法: python -m engine.qc.fontcheck <deck.pptx> [...]")
+        print("用法: python .pi/cli.py run engine.qc.fontcheck <deck.pptx> [...]")
         return 2
     total = 0
     for p in args:

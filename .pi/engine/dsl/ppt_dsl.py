@@ -40,10 +40,16 @@ CAP_SLACK = 8         # 再额外给 8 字余量（短文本的百分比会被�
 
 
 def _layouts():
-    """延迟导入渲染器（schema 层不该在 import 时就拽进 python-pptx）。"""
+    """延迟导入**几何层**（不是渲染器）。
+
+    `geom` 只算尺寸、不 import python-pptx / matplotlib，所以 schema 层可以放心用它，
+    `python .pi/cli.py budget` 这类纯算数的命令也不会被拉上渲染依赖。
+    仍保留 try/except：极端情况下（文件被裁剪、离线包不全）宁可跳过容量校验，
+    也不要让整份 deck 连 schema 都进不来。
+    """
     try:
-        from ..render import layouts
-        return layouts
+        from ..render import geom
+        return geom
     except Exception:              # 纯 schema 环境（无 pptx）：跳过几何校验
         return None
 
@@ -567,7 +573,7 @@ class FigureSlide(BaseModel):
     转栅格再嵌进去就会糊。本版式的 `image` 走「**逐字节原封不动嵌入**」的通道
     （`layouts.add_image`：EMF/WMF 手工挂 ImagePart，不重绘、不转格式）。
 
-    Word 里的图先用 `python -m engine.ingest.docx_in <docx> -o .pi/work/input.md --media .pi/work/media`
+    Word 里的图先用 `python .pi/cli.py run engine.ingest.docx_in <docx> -o .pi/work/input.md --media .pi/work/media`
     抽到 `.pi/work/media/`，再把 `media/NN-xxx.emf` 写进 `image`（路径相对仓库根目录解析）。
     """
     slide_type: Literal["figure"]

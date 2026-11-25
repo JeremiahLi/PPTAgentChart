@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))   # 仓库根
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))   # 代码根 = .pi
 
 from engine.dsl.ppt_dsl import (
     HighlightBox, QuadrantCell, QuadrantGridSlide, SlideNotes, Slide,

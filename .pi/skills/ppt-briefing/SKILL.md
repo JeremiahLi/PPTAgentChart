@@ -5,10 +5,11 @@ description: 汇报型 PPT 的写作方向 —— 一页一个主张、结论先
 
 # 汇报型（briefing）
 
-**本仓库目前的默认呈现效果就是汇报型。** 受众是决策者：他们只看这一份材料，
+**这是汇报型的规范，不是仓库默认。** 默认方向是研讨型（`build --brief` 缺省 `seminar`），
+只有用户点名要汇报材料时才用本技能。汇报型的受众是决策者：他们只看这一份材料，
 不会去翻原文。目标：**每页一个主张，第一眼就能看懂结论。**
 
-配套的公共规范在 `ppt-common`（出图通道 / 14 版式契约 / 图标 / 通用铁律），
+配套的公共规范在 `ppt-common`（出图通道 / 19 版式契约 / 图标 / 通用铁律），
 机检规则在 `.pi/briefs/briefing.yaml`（**只有 `check` 段，很短，扫一眼即可**；
 写作规范以本文件为准）。开工前读三样：`ppt-common`、`.pi/briefs/briefing.yaml`、
 `.pi/skills/ppt-common/examples-all.json`。**别每生成一页就去读一个范例文件。**
@@ -78,9 +79,9 @@ description: 汇报型 PPT 的写作方向 —— 一页一个主张、结论先
 
 ```bash
 # 一条命令：合并 + 质检 + 渲染 + 字体自检（外观两参数可选，不写就是 style-harness + flat）
-python .pi/pptx.py build -o .pi/out/主题.pptx --title 标题 \
+python .pi/cli.py build -o .pi/out/主题.pptx --title 标题 \
     --brief briefing --style blue-business --card outline
-# 改完页先看红线（不落盘）：python .pi/pptx.py check
+# 改完页先看红线（不落盘）：python .pi/cli.py check
 ```
 
 汇报型默认建议 `blue-business` 或 `style-harness` 配色 + `outline`/`accent-top` 卡片：

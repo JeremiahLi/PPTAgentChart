@@ -3,16 +3,16 @@
 
 用法：
   # 从 analysis.md 分析
-  python -m engine.plan.plan .pi/work/analysis.md -o .pi/work/outline.json --title "Pi 编程智能体" --brief seminar
+  python .pi/cli.py run engine.plan.plan .pi/work/analysis.md -o .pi/work/outline.json --title "Pi 编程智能体" --brief seminar
 
   # 从原始文档分析（无 analysis.md 时）
-  python -m engine.plan.plan input/article.md -o .pi/work/outline.json --from_raw
+  python .pi/cli.py run engine.plan.plan input/article.md -o .pi/work/outline.json --from_raw
 
   # 检查大纲是否需要重跑（对比缓存键）
-  python -m engine.plan.plan .pi/work/analysis.md --check-cache
+  python .pi/cli.py run engine.plan.plan .pi/work/analysis.md --check-cache
 
   # 从原文自动生成 analysis.md 骨架（结论/论据/缺口留给人和模型补）
-  python -m engine.plan.plan .pi/work/input.md --emit-analysis
+  python .pi/cli.py run engine.plan.plan .pi/work/input.md --emit-analysis
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ def main():
         print(f"  已自动填: 章节 / 模块 / 论据 / 数字")
         print(f"  待你补:   核心结论（判断句）、缺口（没有就写 无）")
         print(f"下一步: 改完 {args.emit_analysis} 后重跑（不带 --emit-analysis）")
-        print(f"  python -m engine.plan.plan {args.emit_analysis} -o {args.out} "
+        print(f"  python .pi/cli.py run engine.plan.plan {args.emit_analysis} -o {args.out} "
               f"--title \"...\" --brief {args.brief}")
         return
 
@@ -120,12 +120,12 @@ def main():
     print(f"\n下一步:")
     print(f"  1. 审阅大纲: cat {args.out}（这是唯一要停下来让用户过目的环节）")
     print(f"  2. 写逐页 JSON 到 .pi/work/slides/（一个文件 5-8 页，数组），一条命令出图:")
-    print(f"     python -m engine.build .pi/work/slides -o .pi/out/result.pptx "
+    print(f"     python .pi/cli.py build .pi/work/slides -o .pi/out/result.pptx "
           f"--brief {args.brief} --source .pi/work/analysis.md")
-    print(f"  3. 只想先看骨架（不写页）: python -m engine.render.merge --from-outline {args.out} "
-          f"-o .pi/work/deck.json && python -m engine.render.render .pi/work/deck.json "
+    print(f"  3. 只想先看骨架（不写页）: python .pi/cli.py run engine.render.merge --from-outline {args.out} "
+          f"-o .pi/work/deck.json && python .pi/cli.py run engine.render.render .pi/work/deck.json "
           f"-o .pi/out/skeleton.pptx --qc")
-    print(f"  4. 检查缓存: python -m engine.plan.plan {args.input} -o {args.out} --check-cache")
+    print(f"  4. 检查缓存: python .pi/cli.py run engine.plan.plan {args.input} -o {args.out} --check-cache")
 
 
 if __name__ == "__main__":

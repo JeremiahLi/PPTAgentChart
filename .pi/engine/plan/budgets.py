@@ -18,9 +18,9 @@
 - **写作区间** = 静态下限（含 briefs 方向红线的密度下限）到写作目标的 ~90%。
 
 用法（全部从仓库根执行）：
-  python -m engine.plan.budgets .pi/work/outline.json -o .pi/work/budgets.md
-  python -m engine.plan.budgets --all -o .pi/work/budgets-all.md   # 全版式参考表
-  python -m engine.plan.budgets --selfcheck                        # 自证"照预算写必过校验"
+  python .pi/cli.py budget .pi/work/outline.json -o .pi/work/budgets.md
+  python .pi/cli.py budget --all -o .pi/work/budgets-all.md   # 全版式参考表
+  python .pi/cli.py budget --selfcheck                        # 自证"照预算写必过校验"
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ from typing import get_args, get_origin
 
 
 from ..dsl import ppt_dsl
-from ..render import layouts as L
+from ..render import geom as L
 
 CLS = {
     "cover": ppt_dsl.CoverSlide, "toc": ppt_dsl.TocSlide,

@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO.parent))   # 仓库根：engine 包在这里，REPO 仍是 .pi/
+sys.path.insert(0, str(REPO))          # 代码根：engine 包在 .pi 下，REPO 就是 .pi
 
 from engine.dsl import briefs              # noqa: E402
 from engine.dsl.ppt_dsl import validate_dict  # noqa: E402

@@ -4,9 +4,14 @@
 "判断句标题 / 信息密度 / 比喻 / 图标 / 底部收束"来写，
 内容换成你手头文档的真实信息，密度**只能更高不能更低**（不要照抄示例主题）。
 
-> **开工时读一次 `../examples-all.json` 就够**（18 个版式全在里面）——
+> **开工时读一次 `../examples-all.json` 就够**（19 个版式全在里面）——
 > 只有开一个**新**版式、或对某个版式拿不准时，才单独 Read 这里对应的一个文件。
 > 「生成一页就读一个范例」是旧工作流，40 页 deck 会白搭 40 次读盘与上下文。
+>
+> **`examples-all.json` 是生成物，别手改。** 源是下面这些 `NN-*.json`；
+> 改完任一个就跑 `python .pi/tools/gen_examples.py` 重生成合集
+> （`--check` 只比对不写，用来查有没有人改了源忘了同步）。
+> 2026-11-25 之前两份各存一份，结果合集里有两处正文比拆分文件新、拆分文件却还留着旧稿。
 
 - `01-cover.json` … `18-key_groups.json`（+ `99-end.json`；其中 `11-grid_2x2`、
   `15~17`（timeline/funnel/matrix）、`18-key_groups` 是 2026-10 新增的关系语义版式）
@@ -20,10 +25,10 @@
 
 ```bash
 # 合并成整份 deck 并校验 schema
-python -m engine.render.merge .pi/skills/ppt-common/examples /tmp/_ex_deck.json --title "智能体评测平台建设方案"
+python .pi/cli.py run engine.render.merge .pi/skills/ppt-common/examples /tmp/_ex_deck.json --title "智能体评测平台建设方案"
 
 # 渲染 + 质检（有 error 会阻止渲染）
-python -m engine.render.render /tmp/_ex_deck.json -o /tmp/_ex.pptx --qc
+python .pi/cli.py run engine.render.render /tmp/_ex_deck.json -o /tmp/_ex.pptx --qc
 ```
 
 两份都 `OK`、`errors` 为空，才说明范例本身是对的。

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""`.pi/pptx.py`（唯一入口 + 状态机 + 门禁）的回归：**纯标准库，不需要第三方依赖**。
+"""`.pi/cli.py`（唯一入口 + 状态机 + 门禁）的回归：**纯标准库，不需要第三方依赖**。
 
     python .pi/tests/entry.py
 
@@ -8,7 +8,7 @@
 （跳步拦截、过期判定、失败标记、信封格式）恰恰是最容易改坏、又最该在开发机就挡住的部分。
 这里用沙箱 + 桩模块，把 engine 换成 20 行的假实现，于是整套门禁可以在任何机器上验证。
 
-沙箱做法：把 pptx.py 拷到临时目录的 .pi/ 下——它按 `__file__` 上溯两级认仓库根，
+沙箱做法：把 cli.py 拷到临时目录的 .pi/ 下——它按 `__file__` 上溯两级认仓库根，
 所以拷过去就自动把临时目录当成仓库，不会碰真实工程。
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve()
-ENTRY = HERE.parent.parent / "pptx.py"          # <repo>/.pi/pptx.py
+ENTRY = HERE.parent.parent / "cli.py"           # <repo>/.pi/cli.py
 
 # 桩模块：只做"写出产物 + 打印一行"，把 engine 的依赖全部绕开
 STUB_PLAN = '''
@@ -77,7 +77,7 @@ def run(root: Path, *args: str) -> tuple[int, str, dict | None]:
     env = {"PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     import os
     env = dict(os.environ, **env)
-    p = subprocess.run([sys.executable, str(root / ".pi" / "pptx.py"), *args],
+    p = subprocess.run([sys.executable, str(root / ".pi" / "cli.py"), *args],
                        cwd=str(root), capture_output=True, text=True,
                        encoding="utf-8", errors="replace", env=env)
     out = (p.stdout or "") + (p.stderr or "")
@@ -101,16 +101,17 @@ def main() -> int:
         return 1
     root = Path(tempfile.mkdtemp(prefix="pptx-entry-"))
     try:
-        (root / "engine" / "plan").mkdir(parents=True)
+        (root / ".pi" / "engine" / "plan").mkdir(parents=True)
         (root / ".pi" / "work").mkdir(parents=True)
-        shutil.copy2(ENTRY, root / ".pi" / "pptx.py")
-        # 入口用 `python -m engine.<阶段>` 起子进程，所以桩必须摆成包结构，
-        # 而不是以前的 .pi/renderer/*.py。
-        for pkg in (root / "engine", root / "engine" / "plan"):
+        shutil.copy2(ENTRY, root / ".pi" / "cli.py")
+        # 入口用 `python -m engine.<阶段>` 起子进程（带 PYTHONPATH=.pi），
+        # 所以桩必须摆成包结构，住在 .pi/engine 下，而不是以前的 .pi/renderer/*.py。
+        eng = root / ".pi" / "engine"
+        for pkg in (eng, eng / "plan"):
             (pkg / "__init__.py").write_text("", encoding="utf-8")
-        for name, body in ((root / "engine" / "plan" / "plan.py", STUB_PLAN),
-                           (root / "engine" / "plan" / "budgets.py", STUB_BUDGETS),
-                           (root / "engine" / "build.py", STUB_BUILD)):
+        for name, body in ((eng / "plan" / "plan.py", STUB_PLAN),
+                           (eng / "plan" / "budgets.py", STUB_BUDGETS),
+                           (eng / "build.py", STUB_BUILD)):
             name.write_text(body, encoding="utf-8")
         (root / "src.md").write_text("# 源文档\n正文内容，不少于三十个字，用于测试切分。\n",
                                      encoding="utf-8")
@@ -155,7 +156,7 @@ def main() -> int:
         check("status 报全通", "整条流水线已跑通" in out, out)
 
         print("失败标记")
-        (root / "engine" / "build.py").write_text(STUB_BUILD_FAIL, encoding="utf-8")
+        (root / ".pi" / "engine" / "build.py").write_text(STUB_BUILD_FAIL, encoding="utf-8")
         code, out, res = run(root, "build", "-o", ".pi/out/x.pptx")
         check("失败码映射 E_QC_ERROR", codes(res)[0] == "E_QC_ERROR", str(codes(res)))
         check("子进程 errors 被带出来", len((res or {}).get("errors", [])) >= 2,
@@ -165,7 +166,7 @@ def main() -> int:
         check("失败后不再自称全部跑通", "整条流水线已跑通" not in out, out)
 
         print("过期级联")
-        (root / "engine" / "build.py").write_text(STUB_BUILD, encoding="utf-8")
+        (root / ".pi" / "engine" / "build.py").write_text(STUB_BUILD, encoding="utf-8")
         run(root, "build", "-o", ".pi/out/x.pptx")
         (root / "src.md").write_text("# 源文档\n内容变了。\n", encoding="utf-8")
         code, out, res = run(root)

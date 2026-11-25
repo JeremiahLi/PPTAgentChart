@@ -3,7 +3,7 @@
 **4620 个图标 / 1 个库（tabler）/ 2 个风格**，全部离线随包分发，无任何 CDN 或在线引用。
 引擎把它们转成 PowerPoint 自定义几何图形（`<a:custGeom>`）：真矢量、可改色、可缩放，PPT 内是原生图形而非图片。
 
-尺寸：约 8.7 MB，其中索引 `index.json` 占 0.6 MB。
+尺寸：SVG 树约 7.7 MB（4620 个文件），索引 `index.json` 0.6 MB，整个目录约 8.3 MB。
 
 > **2026-10 收敛说明**：原先是 4 库 / 9 风格 / 9931 个。四库并存的代价不是磁盘，而是
 > **同一页的图标粗细与大小时不一致**（笔画 2.0 vs 1.5、占框 16.9/24 vs 18.4/24），
@@ -86,13 +86,13 @@ tabler/outline → tabler/filled
 ## 5. 命令行
 
 ```bash
-python -m engine.render.iconlib 齿轮                  # 中文别名检索
-python -m engine.render.iconlib --search brain        # 英文名 / 标签检索
-python -m engine.render.iconlib --search 安全 --lib tabler
-python -m engine.render.iconlib --json --search data  # 结构化输出（供程序消费）
-python -m engine.render.iconlib --show 齿轮            # 看某名字最终解析成哪个图标
-python -m engine.render.iconlib --libs                # 列出库与风格
-python -m engine.render.iconlib --stats               # 总数 / 索引时间 / 别名数 / 分组统计
+python .pi/cli.py run engine.render.iconlib 齿轮                  # 中文别名检索
+python .pi/cli.py run engine.render.iconlib --search brain        # 英文名 / 标签检索
+python .pi/cli.py run engine.render.iconlib --search 安全 --lib tabler
+python .pi/cli.py run engine.render.iconlib --json --search data  # 结构化输出（供程序消费）
+python .pi/cli.py run engine.render.iconlib --show 齿轮            # 看某名字最终解析成哪个图标
+python .pi/cli.py run engine.render.iconlib --libs                # 列出库与风格
+python .pi/cli.py run engine.render.iconlib --stats               # 总数 / 索引时间 / 别名数 / 分组统计
 ```
 
 ## 6. 维护

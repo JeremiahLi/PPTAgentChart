@@ -32,11 +32,11 @@ heroicons 四库并存，笔画宽度（2.0 vs 1.5）和图形占框比例（16.
     齿轮                   → 先查 .pi/assets/icons/aliases.json 语义别名
 
 命令行：
-    python -m engine.render.iconlib 齿轮
-    python -m engine.render.iconlib --search brain --json --limit 20
-    python -m engine.render.iconlib --libs
-    python -m engine.render.iconlib --stats
-    python -m engine.render.iconlib --show 齿轮
+    python .pi/cli.py run engine.render.iconlib 齿轮
+    python .pi/cli.py run engine.render.iconlib --search brain --json --limit 20
+    python .pi/cli.py run engine.render.iconlib --libs
+    python .pi/cli.py run engine.render.iconlib --stats
+    python .pi/cli.py run engine.render.iconlib --show 齿轮
 """
 from __future__ import annotations
 

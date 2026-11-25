@@ -2,7 +2,7 @@
 """离线回归冒烟测试（纯 stdlib + engine，`python .pi/tests/smoke.py` 即可跑）。
 
 它锁定五件不该倒退的事：
-  1. 14 种 slide_type 全都能过 schema + 几何质检 + 渲染；
+  1. 19 种 slide_type 全都能过 schema + 几何质检 + 渲染；
   2. 内容放不下时**渲染器自己降档**，`--qc` 只点名"降到最小档仍放不下"，
      不再用 error 阻止渲染（写满必须比写短更安全）;
   3. 渲染产物非空、可被 python-pptx 重新打开；
@@ -21,7 +21,7 @@ import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO.parent))   # 仓库根：engine 包在这里，REPO 仍是 .pi/
+sys.path.insert(0, str(REPO))          # 代码根：engine 包在 .pi 下，REPO 就是 .pi
 
 from engine.dsl.ppt_dsl import load_deck, validate_dict  # noqa: E402
 from engine.qc import qc                                # noqa: E402
@@ -64,13 +64,16 @@ def main() -> int:
     slides = deck["slides"]
     types = [s["slide_type"] for s in slides]
 
-    print("== 1. 14 种 slide_type 全覆盖 ==")
+    print("== 1. 19 种 slide_type 全覆盖 ==")
     expect = {
         "cover", "toc", "section", "statement", "compare_3col",
         "numbered_cards", "layered_stack", "flow", "hierarchy",
         "table", "chart", "panel_2col", "figure", "end",
+        # 2026-11-25 补齐：这五个以前只验证过 schema 拒绝，没验证过"能不能画出来"。
+        # pitfalls 里 grid_2x2 / timeline / matrix 都出过"带着必炸的伤进仓"的记录。
+        "grid_2x2", "timeline", "funnel", "matrix", "key_groups",
     }
-    _check("14 种类型各占一页", set(types) == expect, f"实际 {sorted(set(types))}")
+    _check("19 种类型各占一页", set(types) == expect, f"实际 {sorted(set(types))}")
 
     print("== 2. schema 校验 ==")
     model, errs = _validate(deck)
@@ -82,7 +85,7 @@ def main() -> int:
     _check("qc 0 error", code == 0 and isinstance(errs, list) and not errs,
            json.dumps(errs, ensure_ascii=False)[:200])
 
-    print("== 4. 渲染 14 页 pptx（含一页 EMF 原样嵌入）==")
+    print("== 4. 渲染 19 页 pptx（含一页 EMF 原样嵌入）==")
     with tempfile.TemporaryDirectory() as td:
         out = Path(td) / "deck.pptx"
         render.build_pptx(load_deck(str(FIXTURE)), str(out))

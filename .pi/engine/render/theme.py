@@ -15,7 +15,10 @@ from __future__ import annotations
 
 import os
 
-from pptx.util import Inches, Pt
+# 本模块**只放常量与纯色彩运算，不 import python-pptx**（2026-11-25）。
+# 这里曾经 `from pptx.util import Inches, Pt`，但两个名字一次都没用到，
+# 代价却是 `render/geom.py` 一 import 本模块就顺带拉起 python-pptx（约 0.4s）——
+# 于是「只算字数预算」的命令也要为渲染器付启动成本。别再把它加回来。
 
 # ---------- 画布 ----------
 # 注意：这里全部是**浮点英寸**，不是 Inches() 的 EMU 对象 ——

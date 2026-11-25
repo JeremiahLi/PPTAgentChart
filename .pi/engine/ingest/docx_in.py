@@ -2,7 +2,7 @@
 """Word 输入预处理：去修订 + 抽图（含 EMF/WMF 原样保留）→ 给 Agent 读的 markdown。
 
 用法：
-    python -m engine.ingest.docx_in <输入.docx> -o .pi/work/input.md [--media .pi/work/media]
+    python .pi/cli.py run engine.ingest.docx_in <输入.docx> -o .pi/work/input.md [--media .pi/work/media]
 
 产出三样东西：
   1. `-o` 指定的 markdown：**修订记录已经处理干净**的正文（标题 / 段落 / 列表 / 表格），

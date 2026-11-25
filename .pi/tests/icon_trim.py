@@ -241,7 +241,7 @@ def rebuild_index(styles: dict[str, list[str]]) -> dict:
 # ---------------------------------------------------------------- 校验
 def verify(styles: dict[str, list[str]]) -> list[str]:
     """删除之后必须还成立的事情。返回问题清单（空 = 通过）。"""
-    sys.path.insert(0, str(REPO.parent))   # 仓库根
+    sys.path.insert(0, str(REPO))          # 代码根 = .pi
     import importlib
 
     from engine.render import iconlib

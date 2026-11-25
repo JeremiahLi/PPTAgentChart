@@ -8,7 +8,7 @@ description: 研讨型 PPT 的写作方向 —— 输入资料的论点论据全
 受众是**会对着这份材料逐条讨论的同事**。目标：把输入资料的内容
 **无遗漏**地呈现在页面上，**不替读者做取舍**。
 
-配套的公共规范在 `ppt-common`（出图通道 / 14 版式契约 / 图标 / 通用铁律），
+配套的公共规范在 `ppt-common`（出图通道 / 19 版式契约 / 图标 / 通用铁律），
 机检规则在 `.pi/briefs/seminar.yaml`（**只有 `check` 段，很短，扫一眼即可**；
 写作规范以本文件为准，不要在两个文件里重复读同一段话）。开工前读三样：
 `ppt-common`、`.pi/briefs/seminar.yaml`、`.pi/skills/ppt-common/examples-all.json`。
@@ -51,7 +51,7 @@ description: 研讨型 PPT 的写作方向 —— 输入资料的论点论据全
 看不出"整块内容没进 deck"）。所以交稿前**必须**带上输入分析跑一次：
 
 ```bash
-python .pi/pptx.py build -o .pi/out/主题.pptx --brief seminar
+python .pi/cli.py build -o .pi/out/主题.pptx --brief seminar
 ```
 （`--source` 会自动带上 `.pi/work/analysis.md`，不用手写）
 
@@ -193,7 +193,7 @@ flow 每步 desc ≥ 16、hierarchy 每个 node.desc ≥ 20 —— 改写润色�
 
 ```bash
 # 一条命令：合并 + 质检 + 渲染 + 字体自检（--style/--card 可选，不写就是 style-harness + flat）
-python .pi/pptx.py build -o .pi/out/主题.pptx --title 标题 \
+python .pi/cli.py build -o .pi/out/主题.pptx --title 标题 \
     --brief seminar --style violet-tech --card accent-left
 ```
 

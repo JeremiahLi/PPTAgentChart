@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 """PPT Agent 的唯一入口：一条命令跑完整条流水线，跳步会当场失败。
 
-    python .pi/pptx.py                          # 看状态（等价 status）
-    python .pi/pptx.py analyze 材料.docx         # Word 预处理 + 分析表骨架
-    python .pi/pptx.py outline --title "主题"    # 分析表 → 结构化大纲
-    python .pi/pptx.py budget                   # 大纲 → 逐页字数预算表
-    python .pi/pptx.py check                    # 只质检，不出文件
-    python .pi/pptx.py build -o .pi/out/x.pptx  # 合并 + 质检 + 渲染 + 字体自检
+    python .pi/cli.py                          # 看状态（等价 status）
+    python .pi/cli.py analyze 材料.docx         # Word 预处理 + 分析表骨架
+    python .pi/cli.py outline --title "主题"    # 分析表 → 结构化大纲
+    python .pi/cli.py budget                   # 大纲 → 逐页字数预算表
+    python .pi/cli.py check                    # 只质检，不出文件
+    python .pi/cli.py build -o .pi/out/x.pptx  # 合并 + 质检 + 渲染 + 字体自检
+    python .pi/cli.py run engine.qc.fontcheck .pi/out/x.pptx   # 直通任意 engine 模块
+
+入口本身住在 `.pi/` 下（代码整包在 `.pi/engine/`，仓库根只留 AGENTS.md +
+requirements.txt）。正因为脚本目录会被 Python 放进 `sys.path[0]`，`.pi` 顶层
+**不能有与第三方库同名的 `.py`**——这也是入口叫 `cli.py` 而不是 `pptx.py` 的原因。
 
 为什么有这个文件（一句话）：**流程以前写在 markdown 里，靠模型读、靠模型记**。
 `ppt-entry.md` 描述的"分析 → 大纲 → 预算 → 写页 → 出图"没有任何东西保证被按序执行，
@@ -24,8 +29,8 @@
    这样回炉时能按 code 统计、能 diff，不必靠模型"读懂一句话"。
 3. **指纹判新旧**：状态里存内容的 sha256 前 12 位，不比 mtime——
    `git checkout` 会改 mtime 但内容没变，比 mtime 会误报过期。
-4. **只做适配层**：内部调 `python -m engine.<阶段>`，不复制任何判定逻辑
-   （长度上限、几何容量、字体口径全部留在 `engine/` 里）。
+4. **只做适配层**：内部调 `python -m engine.<阶段>`（子进程带 `PYTHONPATH=.pi`），
+   不复制任何判定逻辑（长度上限、几何容量、字体口径全部留在 `engine/` 里）。
    阶段与模块的对应只有 `STAGE_MODULES` 一张表，换实现只改这里，对外契约不变。
 
 门禁分两级，别混：
@@ -47,9 +52,12 @@ import sys
 import time
 from pathlib import Path
 
-# 仓库根：本文件在 <repo>/.pi/pptx.py，上溯两级
-REPO = Path(__file__).resolve().parent.parent
-STATE = REPO / ".pi" / "work" / "state.json"
+# 本文件在 <repo>/.pi/cli.py：上溯一级是代码/资源根（.pi），两级是仓库根。
+# 子进程仍以 REPO 为 cwd（命令行里的 .pi/work/... 都是相对仓库根写的）；
+# 但 engine 包住在 .pi 下，靠 PYTHONPATH 让 `-m engine.xxx` 找得到。
+PI_ROOT = Path(__file__).resolve().parent
+REPO = PI_ROOT.parent
+STATE = PI_ROOT / "work" / "state.json"
 PY = sys.executable
 
 # ---- 产物路径（相对仓库根；状态文件里存的也是相对路径，换机器可读）----
@@ -317,12 +325,12 @@ def upstream_issues(key: str) -> tuple[list[dict], list[dict]]:
 def next_cmd(key: str) -> str:
     """说人话的"下一步"：把阶段名翻成可以直接粘的命令。"""
     return {
-        "analyze": "python .pi/pptx.py analyze <源文件.docx|.md>",
-        "outline": "python .pi/pptx.py outline --title \"主题\"",
-        "budget": "python .pi/pptx.py budget",
+        "analyze": "python .pi/cli.py analyze <源文件.docx|.md>",
+        "outline": "python .pi/cli.py outline --title \"主题\"",
+        "budget": "python .pi/cli.py budget",
         "slides": "按 ppt-common 第 2 步写 .pi/work/slides/*.json（一个文件 5-8 页）",
-        "build": "python .pi/pptx.py build -o .pi/out/<主题>.pptx",
-    }.get(key, f"python .pi/pptx.py {key}")
+        "build": "python .pi/cli.py build -o .pi/out/<主题>.pptx",
+    }.get(key, f"python .pi/cli.py {key}")
 
 
 def last_out() -> str:
@@ -391,7 +399,8 @@ def run_child(script_key: str, argv: list[str], *, dry: bool = False, quiet: boo
     module = STAGE_MODULES[script_key]
     # 用 `-m 包.模块` 而不是文件路径：阶段脚本都住 engine/ 包里，模块内部用的是
     # 相对导入，按路径执行会以「无父包」身份跑，一上来就 ImportError。
-    file = REPO / module.replace(".", "/")
+    # engine 包在 .pi 下，所以模块文件按 PI_ROOT 找、`-m` 靠 PYTHONPATH 找。
+    file = PI_ROOT / module.replace(".", "/")
     if not (file.with_suffix(".py").exists() or (file / "__main__.py").exists()):
         return 127, {"ok": False, "reason": "script_missing",
                      "errors": [f"找不到模块 {module}"]}, 0.0
@@ -400,7 +409,11 @@ def run_child(script_key: str, argv: list[str], *, dry: bool = False, quiet: boo
         print(f"  [dry-run] {' '.join(cmd)}")
         return 0, {"ok": True, "dry_run": True}, 0.0
 
-    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    # PYTHONPATH 前置 .pi，同时保留调用方已有的值（别把外层的路径覆盖掉）
+    _pp = str(PI_ROOT)
+    if os.environ.get("PYTHONPATH"):
+        _pp = _pp + os.pathsep + os.environ["PYTHONPATH"]
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1", PYTHONPATH=_pp)
     t0 = time.perf_counter()
     proc = subprocess.run(cmd, cwd=str(REPO), capture_output=True, text=True,
                           encoding="utf-8", errors="replace", env=env)
@@ -531,7 +544,7 @@ def cmd_analyze(a) -> int:
     if not src.is_absolute():
         # 相对路径按"用户敲命令时的目录"解，其次才按仓库根——
         # 因为 main() 为了内部脚本的 `.pi/work/...` 会把 cwd 切到仓库根，
-        # 直接用 cwd 会把 `cd 别的目录 && python <repo>/.pi/pptx.py analyze ./x.md` 解错。
+        # 直接用 cwd 会把 `cd 别的目录 && python <repo>/.pi/cli.py analyze ./x.md` 解错。
         cand = (_CWD0 / src)
         src = cand.resolve() if cand.exists() else _abs(src)
     if not src.exists():
@@ -748,6 +761,30 @@ def cmd_build(a) -> int:
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
+def cmd_run(a) -> int:
+    """直通任意 engine 模块：`cli.py run engine.qc.fontcheck x.pptx`。
+
+    给"不属于四阶段流水线、但确实要单独跑"的模块留一条口子（字体自检、docx 预处理、
+    merge/render 单独调试）。为什么还要这一层：engine 住在 `.pi` 下，裸敲
+    `python -m engine.x` 在仓库根找不到包，得靠 PYTHONPATH——这条命令替人把它设好。
+    退出码原样透传（调试命令要能看见真实成败，不套业务失败恒 0 那套）。
+    """
+    module = a.module
+    file = PI_ROOT / module.replace(".", "/")
+    if not (file.with_suffix(".py").exists() or (file / "__main__.py").exists()):
+        return fail("run", "E_MODULE_MISSING", f"模块不存在：{module}",
+                    hint="模块名形如 engine.qc.fontcheck，用点分全名，别写文件路径")
+    cmd = [PY, "-m", module] + list(a.args)
+    _pp = str(PI_ROOT)
+    if os.environ.get("PYTHONPATH"):
+        _pp = _pp + os.pathsep + os.environ["PYTHONPATH"]
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1", PYTHONPATH=_pp)
+    if a.dry_run:
+        print(f"  [dry-run] {' '.join(cmd)}")
+        return 0
+    return subprocess.run(cmd, cwd=str(REPO), env=env).returncode
+
+
 def build_parser() -> argparse.ArgumentParser:
     # 公共开关：每个子命令都认，避免"这个命令有没有那个参数"的记忆负担
     common = argparse.ArgumentParser(add_help=False)
@@ -757,7 +794,7 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("--dry-run", action="store_true", help="只打印将执行的命令，不跑不写状态")
 
     ap = argparse.ArgumentParser(
-        prog="pptx.py",
+        prog="cli.py",
         description="PPT Agent 唯一入口：analyze → outline → budget → 写页 → build",
         epilog="不带子命令 = 看流水线状态。成败看末行 RESULT，退出码恒 0。",
         formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -806,6 +843,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_build_args(p)
     p.set_defaults(func=cmd_build)
 
+    p = sub.add_parser("run", parents=[common],
+                       help="直通任意 engine 模块（例：run engine.qc.fontcheck x.pptx）")
+    p.add_argument("module", help="点分模块全名，如 engine.qc.fontcheck")
+    p.add_argument("args", nargs=argparse.REMAINDER, help="原样传给该模块的参数")
+    p.set_defaults(func=cmd_run)
+
     return ap
 
 
@@ -814,7 +857,7 @@ def main(argv=None) -> int:
     _utf8_streams()
     _CWD0 = Path.cwd()
     # 统一工作目录：所有内部脚本都用 `.pi/work/...` 相对路径，cwd 必须是仓库根。
-    # 从别处调用（`python /path/to/.pi/pptx.py status`）也能工作；
+    # 从别处调用（`python /path/to/.pi/cli.py status`）也能工作；
     # 用户给的相对路径在 cmd_analyze 里按 _CWD0 兜住。
     try:
         os.chdir(REPO)
@@ -822,7 +865,7 @@ def main(argv=None) -> int:
         pass
 
     parser = build_parser()
-    # 不带子命令 = status；`python .pi/pptx.py --json` 这种"只给全局开关"也当 status
+    # 不带子命令 = status；`python .pi/cli.py --json` 这种"只给全局开关"也当 status
     raw = list(sys.argv[1:] if argv is None else argv)
     if not raw:
         raw = ["status"]

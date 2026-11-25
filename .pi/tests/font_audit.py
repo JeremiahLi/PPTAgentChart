@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "out"
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # 仓库根
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # 代码根 = .pi
 
 from engine.qc import fontcheck  # noqa: E402
 

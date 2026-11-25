@@ -33,8 +33,8 @@ try:
     from matplotlib.ticker import MaxNLocator
 except ImportError as _exc:  # 依赖自举没跑成功时的第一现场，别让它只报 "No module named"
     raise ImportError(
-        "缺少 matplotlib（渲染器硬依赖，layouts.py 顶层就 import 本模块，不是只有 --chart-mode mpl 才用）。\n"
-        "修复：仓库根执行 setup.bat；或 python -m pip install -r requirements.txt；\n"
+        "缺少 matplotlib（只有 --chart-mode mpl 才需要它，但库缺失说明离线依赖整体没装好）。\n"
+        "修复：`.pi\\setup.bat`（在仓库根执行）；或 python -m pip install -r requirements.txt；\n"
         "离线机还需确认 .pi/wheels/py3XY 下的 wheel 齐全（git 不跟踪 wheel，需整目录拷贝）。"
     ) from _exc
 
