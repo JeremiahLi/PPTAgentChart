@@ -16,13 +16,13 @@
 > | `engine/build.py` | 编排层：merge → qc → render → fontcheck 一条命令 |
 > | `engine/paths.py` | 资源根路径唯一来源（`.pi/` 下 briefs / assets / work / out） |
 >
-> **`.pi/renderer/*.py` 现在只是转发桩**（每个 12 行，把旧路径指到 `engine/…`），
-> 让既有命令、测试、文档零改动继续可用。桩的完整性由 `python .pi/tests/shims.py` 守住
-> （对象同一性 + CLI 真的执行 + `.pi` 不进 `sys.path`）。删桩的前提是文档命令全部改走
-> `python -m engine.…`，属于独立一轮改动。
+> **迁移期的转发桩已拆除**（2026-11）。`.pi/renderer/` 目录不再存在，调用一律走
+> `python -m engine.<子包>.<模块>`，例如 `python -m engine.build …`。旧命令
+> `python .pi/renderer/build.py …` **现在会直接报文件不存在**，不要再照抄旧文档。
 >
 > **`.pi/` 下不放可执行代码**：一旦 `.pi` 进了 `sys.path`，`.pi/pptx.py` 会把第三方
 > `pptx` 库顶掉（`'pptx' is not a package`），而且只在特定 import 顺序下才炸。
+> 这也是 `engine/` 必须待在仓库根、而不是 `.pi/` 下的原因。
 
 > **目录结构（2026-10 调整）**：配置、技能、测试、数据在 **`.pi/` 下**（`assets/`、`tests/`、
 > `work/`、`out/`、`docs/`、`wheels/`、`briefs/`、`skills/`、`prompts/`）；
@@ -65,10 +65,9 @@ budget 就出图）。`--force` 可硬闯，`RESULT` 里留 `forced: true` 可�
 `untracked` 是迁移态：产物在但无指纹记录（新入口上线前跑的老流程），门禁放行但告警，
 重跑一次就收录。
 
-**`.pi/renderer/*.py` 现在只是转发桩**（真身在 `engine/`，见开头的代码分层表），
-`.pi/pptx.py` 只是适配层：它不复制任何判定逻辑（字数上限、几何容量、字体口径仍在原处），
-内部拆分时只改 `STAGE_SCRIPTS`。入口层回归：`python .pi/tests/entry.py`（纯标准库，
-没装 python-pptx 也能跑）；桩的回归：`python .pi/tests/shims.py`。
+`.pi/pptx.py` 只是适配层：它不复制任何判定逻辑（字数上限、几何容量、字体口径仍在
+`engine/` 里），阶段与模块的对应只有 `STAGE_MODULES` 一张表。入口层回归：
+`python .pi/tests/entry.py`（纯标准库，没装 python-pptx 也能跑）。
 
 ## 谁负责什么
 
@@ -91,7 +90,7 @@ budget 就出图）。`--force` 可硬闯，`RESULT` 里留 `forced: true` 可�
 - **运行环境**：内网部署、不可联网的私有模型，全程中文（简体）。
   `~/.pi/agent/AGENTS.md` 只放对所有项目成立的通用约束，PPT 专属规则全在本仓库。
 - **字体**：中文微软雅黑 + 西文 Times New Roman，只用 Windows 自带字体，
-  **仓库不带字体包**（不要放 `fonts/`、`*.ttf`）；口径与实现见 `.pi/renderer/theme.py`
+  **仓库不带字体包**（不要放 `fonts/`、`*.ttf`）；口径与实现见 `engine/render/theme.py`
   与 `.pi/docs/pitfalls.md` 第 24 条。交付前跑 `python .pi/tests/font_audit.py .pi/out/xxx.pptx`
   自检（逐段核对 latin+ea 字体对 + `lang`/`endParaRPr` 语言标记 + 母版主题 + 编码）；
   要让**英文与数字也用雅黑**，
@@ -261,27 +260,27 @@ requirementsFile: "requirements.txt",        // 清单唯一真相，脚本里�
   当前代码一个都没 import——`docx_in.py` 读 Word 用的是 `zipfile` + `lxml` 直接解 OOXML，
   不需要 python-docx。要恢复某项能力，按 README 从镜像补回来，别再维护一个全量清单。
 
-## 渲染器（真身 `engine/`，旧路径 `.pi/renderer/` 是转发桩）
+## 引擎模块（`engine/`）
 
-> 下表用旧路径写，是因为**命令照旧这么敲**（桩会转到 `engine/` 里对应文件）。
-> 想知道某个文件现在住哪：
-> `engine/dsl/`（schema、briefs）· `engine/plan/`（分析/规划/预算）·
+> 全部是**可导入的包模块**，从仓库根用 `python -m …` 运行。
+> 分层：`engine/dsl/`（schema、briefs）· `engine/plan/`（分析/规划/预算）·
 > `engine/render/`（主题/图表/图标/版式/合并/渲染/备注）· `engine/qc/`（质检/字体）·
 > `engine/ingest/`（docx 预处理）· `engine/build.py`（编排）。
+> **不在 `.pi/` 下**：`.pi` 进 `sys.path` 会把第三方 `pptx` 顶掉，见开头。
 
-| 文件 | 作用 |
+| 模块 | 作用 |
 |---|---|
-| `.pi/renderer/ppt_dsl.py` | 19 版式的 pydantic schema（字段名 + 长度上限），校验入口 |
-| `.pi/renderer/docx_in.py <输入.docx> -o .pi/work/input.md [--media .pi/work/media]` | **Word 读入预处理**：去修订（接受插入 / 丢弃删除与批注）+ 图片原样抽盘（EMF/WMF 不转格式）+ 图位 markdown 与清单 |
-| `.pi/renderer/build.py <slides_dir> -o <out.pptx> [--brief] [--style] [--speed] [--card] [--source] [--check] [--only 3,7]` | **一条命令出图**：合并 + 质检 + 渲染 + 字体自检，一份紧凑报告。**退出码恒 0**——校验拦截（slides 不合法 / 质检 error / 字体不过 / warning 未归零）属正常业务逻辑，不是运行失败；成败看末行 `RESULT {json}`（`{"ok": …, "reason": …}`）。日常和交稿都走这条 |
-| `.pi/renderer/render.py <deck.json> -o <out.pptx> --qc [--brief 方向] [--style 配色] [--card 卡片] [--source 输入分析]` | 渲染 + 质检（error 会阻止渲染）；已有 deck.json 时用 |
-| `.pi/renderer/merge.py <slides_dir> <out.json> [--brief 方向] [--style 配色] [--card 卡片]` | 合并 slides 为 deck：**一个文件可装 1 页，也可装一页数组（5-8 页/文件，推荐）**；校验失败定位到「文件 + 第几项 + 字段 + 当前字数 vs 上限」；自动纠偏 `type`→`slide_type`、两种 points 结构混淆（stderr 有提示）；读文件兼容 UTF-8 BOM；**校验拦截退出码恒 0**，成败看末行 `RESULT {json}`（与 build.py / render.py 同口径） |
-| `.pi/renderer/budgets.py <outline.json> -o .pi/work/budgets.md` | **字数预算表**：大纲定稿后、写批次前跑，逐页下发动态容量（写作目标 = min(静态上限, 几何容量)，与 schema 校验**同一套几何**，照预算写必过校验）；`--all` 出全版式参考表；`--selfcheck` 自证"照预算写必过校验"，几何改动后重跑它当回归。预算表是"校验报数"的前置版——动态数字不在 SKILL.md 里背 |
-| `.pi/renderer/fontcheck.py <pptx>` | 字体自检的唯一实现（`build.py` 同进程调用；`.pi/tests/font_audit.py` 是薄壳 CLI） |
-| `.pi/renderer/qc.py` | 几何容量 / 密度 / 结构检查 + 方向红线 + 输入覆盖度 |
-| `.pi/renderer/briefs/` + `briefs.py` | **写作方向**（研讨型 / 汇报型）的取舍规约与加载，见下 |
-| `.pi/renderer/theme.py` | 外观的两个白名单维度（2026-10 扩容）：**配色 `style` 5 套**（`style-harness` 默认藏青 / `blue-business` / `bright` / `forest` / `violet-tech`）+ **卡片长相 `card` 5 种**（`flat` 默认 / `outline` / `tinted` / `accent-left` / `accent-top`），`STYLE_CARD_PRESET` 把每套配色绑定一种卡片（用户只选"风格"一项，`--card` 可覆盖）；`apply_style()` / `apply_card_style()` **原位**变更、未登记名确定性回退默认；**字体口径**（中文微软雅黑 + 西文 Times New Roman，只用系统字体、不随包分发）与 `apply_theme_fonts()`。底图与字体不随主题变，卡片长相不许动文字几何（见 pitfalls 第 27 条） |
-| `.pi/renderer/iconlib.py` | SVG → custGeom 的图标引擎（解析规则、检索 CLI） |
+| `python -m engine.dsl.ppt_dsl <deck.json>` | 19 版式的 pydantic schema（字段名 + 长度上限），校验入口 |
+| `python -m engine.ingest.docx_in <输入.docx> -o .pi/work/input.md [--media .pi/work/media]` | **Word 读入预处理**：去修订（接受插入 / 丢弃删除与批注）+ 图片原样抽盘（EMF/WMF 不转格式）+ 图位 markdown 与清单 |
+| `python -m engine.build <slides_dir> -o <out.pptx> [--brief] [--style] [--speed] [--card] [--source] [--check] [--only 3,7]` | **一条命令出图**：合并 + 质检 + 渲染 + 字体自检，一份紧凑报告。**退出码恒 0**——校验拦截（slides 不合法 / 质检 error / 字体不过 / warning 未归零）属正常业务逻辑，不是运行失败；成败看末行 `RESULT {json}`（`{"ok": …, "reason": …}`）。日常和交稿都走这条 |
+| `python -m engine.render.render <deck.json> -o <out.pptx> --qc [--brief 方向] [--style 配色] [--card 卡片] [--source 输入分析]` | 渲染 + 质检（error 会阻止渲染）；已有 deck.json 时用 |
+| `python -m engine.render.merge <slides_dir> <out.json> [--brief 方向] [--style 配色] [--card 卡片]` | 合并 slides 为 deck：**一个文件可装 1 页，也可装一页数组（5-8 页/文件，推荐）**；校验失败定位到「文件 + 第几项 + 字段 + 当前字数 vs 上限」；自动纠偏 `type`→`slide_type`、两种 points 结构混淆（stderr 有提示）；读文件兼容 UTF-8 BOM；**校验拦截退出码恒 0**，成败看末行 `RESULT {json}`（与 build.py / render.py 同口径） |
+| `python -m engine.plan.budgets <outline.json> -o .pi/work/budgets.md` | **字数预算表**：大纲定稿后、写批次前跑，逐页下发动态容量（写作目标 = min(静态上限, 几何容量)，与 schema 校验**同一套几何**，照预算写必过校验）；`--all` 出全版式参考表；`--selfcheck` 自证"照预算写必过校验"，几何改动后重跑它当回归。预算表是"校验报数"的前置版——动态数字不在 SKILL.md 里背 |
+| `python -m engine.qc.fontcheck <pptx>` | 字体自检的唯一实现（`build.py` 同进程调用；`.pi/tests/font_audit.py` 是薄壳 CLI） |
+| `engine/qc/qc.py` | 几何容量 / 密度 / 结构检查 + 方向红线 + 输入覆盖度 |
+| `.pi/briefs/` + `briefs.py` | **写作方向**（研讨型 / 汇报型）的取舍规约与加载，见下 |
+| `engine/render/theme.py` | 外观的两个白名单维度（2026-10 扩容）：**配色 `style` 5 套**（`style-harness` 默认藏青 / `blue-business` / `bright` / `forest` / `violet-tech`）+ **卡片长相 `card` 5 种**（`flat` 默认 / `outline` / `tinted` / `accent-left` / `accent-top`），`STYLE_CARD_PRESET` 把每套配色绑定一种卡片（用户只选"风格"一项，`--card` 可覆盖）；`apply_style()` / `apply_card_style()` **原位**变更、未登记名确定性回退默认；**字体口径**（中文微软雅黑 + 西文 Times New Roman，只用系统字体、不随包分发）与 `apply_theme_fonts()`。底图与字体不随主题变，卡片长相不许动文字几何（见 pitfalls 第 27 条） |
+| `engine/render/iconlib.py` | SVG → custGeom 的图标引擎（解析规则、检索 CLI） |
 | `.pi/assets/icons/` | 图标库：**tabler 单库 4620 个**（outline 3646 + filled 974）+ 中文别名 `aliases.json`，见其 `README.md` |
 
 ## 写作方向（研讨型 / 汇报型）
@@ -291,7 +290,7 @@ requirementsFile: "requirements.txt",        // 清单唯一真相，脚本里�
 | | 研讨型 `seminar` | 汇报型 `briefing` |
 |---|---|---|
 | 技能（给人/AI 读的规范） | `.pi/skills/ppt-seminar/SKILL.md` | `.pi/skills/ppt-briefing/SKILL.md` |
-| 规约（给 `--qc` 读的红线） | `.pi/renderer/briefs/seminar.yaml` | `.pi/renderer/briefs/briefing.yaml` |
+| 规约（给 `--qc` 读的红线） | `.pi/briefs/seminar.yaml` | `.pi/briefs/briefing.yaml` |
 | 受众 | 会逐条讨论的同事 | 只看这一份的决策者 |
 | 取舍 | 资料论点论据**全部上页不丢弃** | 每页一个主张，可抽象可砍 |
 | 页数 | **不限**，由资料量决定；预计 >50 页先问用户 | **不限**（2026-09 起与研讨型一致）；预计 >30 页先问用户 |
@@ -305,14 +304,14 @@ requirementsFile: "requirements.txt",        // 清单唯一真相，脚本里�
 **两档跑同一套检查**，快档一项不少。
 
 两个方向**共用同一套版式和配色**，差别不在长相，在怎么取舍原文，所以规约是策略数据
-（`.pi/renderer/briefs/*.yaml`），不是渲染配置。`deck.json` 写 `"brief"` 字段
+（`.pi/briefs/*.yaml`），不是渲染配置。`deck.json` 写 `"brief"` 字段
 （合并时 `merge.py --brief`，渲染时 `render.py --brief` 可覆盖）。`--qc` 按该方向的
 `check` 段查红线，**只出 warning**。
 
 **改方向规约时，SKILL.md 和 YAML 要一起改**——`.pi/tests/briefs.py` 会校验 YAML 里的
 `skill:` 指向的文件存在，但内容对不对得上得靠人。
 
-新增方向 = 往 `.pi/renderer/briefs/` 放一个 yaml + 在 `.pi/skills/` 放一个 SKILL.md，
+新增方向 = 往 `.pi/briefs/` 放一个 yaml + 在 `.pi/skills/` 放一个 SKILL.md，
 **零代码改动**。回归：`python .pi/tests/briefs.py`。
 
 注意：`src/ppt/styles/*.yaml` 是旧流水线的同名概念，与这里无关，别改串了。
