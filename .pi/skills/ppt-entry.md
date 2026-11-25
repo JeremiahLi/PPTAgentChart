@@ -47,20 +47,33 @@ description: 把文档/思路做成演示文稿 —— 先定写作方向（研�
 **风格一项已绑定卡片长相**：每套配色配一种最搭的卡片（25 种组合不用用户挑）。
 只有用户明确说"卡片换成描边的 / 带色条的"时才额外加 `--card`。
 
-出图命令**把三个维度显式写出来**（别依赖默认值，交付时可追溯）：
+出图命令**把三个维度显式写出来**（别依赖默认值，交付时可追溯）。
+一条流水线走完，**每一步都会核对上游产物还在不在、过没过期**，跳步会当场被拦：
 
 ```bash
-python .pi/renderer/build.py .pi/work/slides -o .pi/out/主题.pptx \
-    --brief seminar --style style-harness --speed slow \
-    --source .pi/work/analysis.md
+python .pi/pptx.py analyze <源文件.docx|.md> --title "主题"   # ① 预处理 + 分析表骨架
+#   ↑ 然后补 analysis.md 的「核心结论 / 缺口」两列（在现文件上小步 edit，别重写）
+python .pi/pptx.py outline --title "主题" --brief seminar    # ② 大纲（慢档在这里停下来过目）
+python .pi/pptx.py budget                                    # ③ 逐页字数预算
+#   ↑ 写 .pi/work/slides/NN-batch.json（一个文件 5-8 页）
+python .pi/pptx.py build -o .pi/out/主题.pptx \
+    --brief seminar --style style-harness --speed slow       # ④ 出图（含质检 + 字体自检）
+```
+
+> 不确定做到哪了、下一步是什么：`python .pi/pptx.py`（不带参数）。它会列出每个阶段的
+> 状态（完成 / 已过期 / 被阻塞 / 上次失败）并给出该跑的那条命令。
+> `--source` 不用手写：`.pi/work/analysis.md` 在就自动带上。
+```bash
+python .pi/pptx.py check     # 只质检不出文件（改完页先看红线）
 ```
 
 > **慢档是默认值**：大纲给用户过目、warning 归零（末行 `RESULT` JSON 里
 > `ok=false, reason=warnings_not_zero`）这些是默认动作。用户说"快点"才切 `fast`。
 
-> **成败看 `RESULT`，不看退出码**：`build.py` / `merge.py` / `render.py --qc` 的退出码恒 0
-> ——校验拦截（schema 不过、质检 error、字体不过）是检查在正常工作，不是运行失败。
-> 每次输出末行都有 `RESULT {json}`，`ok=false` 就按 `reason` 和 `errors` 回炉。
+> **成败看 `RESULT`，不看退出码**：`pptx.py` / `build.py` / `merge.py` / `render.py --qc`
+> 的退出码恒 0 ——校验拦截（schema 不过、质检 error、字体不过、上游过期）是检查在正常工作，
+> 不是运行失败。每次输出末行都有 `RESULT {json}`，`ok=false` 就按 `reason` 和
+> `errors[].code` 回炉。
 
 ## 第 1 步：加载规范
 
@@ -69,12 +82,12 @@ python .pi/renderer/build.py .pi/work/slides -o .pi/out/主题.pptx \
 3. Read `.pi/renderer/briefs/<方向>.yaml` —— 机检红线（页数、图表占比、标题禁用词）。
 
 然后按 ppt-common 的工作流走：
-**输入分析 → 大纲（给用户过目）→ 预算表 → 成批生成（一个文件 5-8 页）→
-build.py 一条命令出图 → 回炉 → 交付**。
+**analyze → outline（给用户过目）→ budget → 成批生成（一个文件 5-8 页）→
+`pptx.py build` 一条命令出图 → 回炉 → 交付**。
 
-> **交稿前必跑一次输入覆盖度**：`python .pi/renderer/build.py .pi/work/slides -o .pi/out/x.pptx
-> --source .pi/work/analysis.md`。它会把"输入里有、deck 里没露面"的数字与模块点名 ——
-> **丢了内容就必须加页补回来，不许删**。研讨型尤其必须过这一关。
+> **交稿前必跑一次输入覆盖度**：`python .pi/pptx.py build -o .pi/out/主题.pptx`
+> （`--source` 会自动带上 `.pi/work/analysis.md`）。它会把"输入里有、deck 里没露面"的
+> 数字与模块点名 —— **丢了内容就必须加页补回来，不许删**。研讨型尤其必须过这一关。
 
 ## 速度档：决定"跑几个回合"，不是"查几项"
 
@@ -87,7 +100,7 @@ build.py 一条命令出图 → 回炉 → 交付**。
 | 大纲给用户过目 | ✅（页数 / 拆分 / 换类型 **一并这次问完**） | ❌ 生成后直接出成品 |
 | 骨架预览 | ✅ **内部定稿，不给用户看** | ❌ |
 | 覆盖度 `--source` | ✅ 必跑（不跑会被点名 → 归不了零） | ✅ 同样跑 |
-| warning | **逐条归零**（未归零 build.py 退 3） | 同类折成一条，不再要求归零 |
+| warning | **逐条归零**（未归零则 `RESULT ok=false, reason=warnings_not_zero`） | 同类折成一条，不再要求归零 |
 | 回炉轮次 | ≤3 轮，**模型自己按报告改，不问用户** | ≤1 轮（只改 error） |
 | `--notes` | ✅ 自动开（`--no-notes` 可关） | 不加 |
 
@@ -107,22 +120,18 @@ build.py 一条命令出图 → 回炉 → 交付**。
 
 ## 第 2 步：输入分析（不可跳过）
 
-**输入是 `.docx` 时先跑一次预处理**（去修订 + 抽图，别自己写脚本解析）：
+一步到位（`.docx` 会自动先跑去修订 + 抽图，别自己写脚本解析）：
 
 ```bash
-python .pi/renderer/docx_in.py <输入.docx> -o .pi/work/input.md      # 图片落到 .pi/work/media/
-```
-
-规划引擎现在支持**自动切分 + 骨架 + 结构化大纲**：
-
-```bash
-# ① 先让代码把分析表切出来（章节/模块/论据/数字自动填好，你只补"结论"和"缺口"）
-python .pi/renderer/plan.py .pi/work/input.md --emit-analysis      # 默认写 .pi/work/analysis.md
+# ① 代码把分析表切出来（章节/模块/论据/数字自动填好，你只补"结论"和"缺口"）
+python .pi/pptx.py analyze <源文件.docx|.md> --title "主题"    # 默认写 .pi/work/analysis.md
 
 # ② 补完 analysis.md 的「核心结论 / 缺口」两列后再规划（这才是产出大纲的那一步）
-python .pi/renderer/plan.py .pi/work/analysis.md -o .pi/work/outline.json \
-    --title "主题" --brief seminar
+python .pi/pptx.py outline --title "主题" --brief seminar
 ```
+
+> 老的等价命令（单步调试时才用）：`docx_in.py` + `plan.py --emit-analysis` + `plan.py`。
+> 正常流程别拆开敲——`pptx.py analyze` 只是把这几步按正确顺序串起来，并记录输入指纹。
 
 > `--emit-analysis` **只切骨架、不出大纲**：它把"读全文写整张表"换成"改三列"，
 > 少几千字输出。骨架里的「章节/模块」可以合并改名，但**不要删掉要上页的模块** ——
@@ -160,12 +169,12 @@ python .pi/renderer/render.py .pi/work/deck.json -o .pi/out/骨架.pptx   # 给�
 同一套几何——照预算写校验必放行，长度类返工在写前就消灭）：
 
 ```bash
-python .pi/renderer/budgets.py .pi/work/outline.json -o .pi/work/budgets.md
+python .pi/pptx.py budget     # 大纲定稿后跑；照预算写，校验必放行
 ```
 
 然后按 `ppt-common` 的工作流走：
-**输入分析（--emit-analysis 出骨架）→ 大纲（给用户过目）→ 预算表 →
-成批生成（一个文件 5-8 页）→ build.py 一条命令出图 → 回炉（按批重写）→ 交付**。
+**analyze → outline（给用户过目）→ budget → 成批生成（一个文件 5-8 页）→
+`pptx.py build` 一条命令出图 → 回炉（按批重写）→ 交付**。
 
 ## 修 slides 报错的纪律（先读后改，别盲改）
 
@@ -198,25 +207,26 @@ python .pi/renderer/budgets.py .pi/work/outline.json -o .pi/work/budgets.md
    见第 0 步。（页数同样不单独问：两个方向都由资料量决定、都不设上限 ——
    研讨型超 50 页、汇报型超 30 页时，把"只讲某几章 / 拆成多份 / 换类型"
    **并进大纲评审那一次**问完，不要出图后再开一轮。）
-2. **产出落点**：输入分析写 `.pi/work/analysis.md`（骨架由 `--emit-analysis` 生成）；
+2. **产出落点**：输入分析写 `.pi/work/analysis.md`（骨架由 `pptx.py analyze` 生成）；
    逐页 DSL 写成 `.pi/work/slides/NN-batch.json`，**一个文件装 5-8 页（数组）**；
-   出图一条命令：`build.py .pi/work/slides -o .pi/out/<主题>.pptx --brief seminar
-   --style style-harness --speed slow --source .pi/work/analysis.md`（自带质检 + 字体自检），
+   出图一条命令：`python .pi/pptx.py build -o .pi/out/<主题>.pptx --brief seminar
+   --style style-harness --speed slow`（自带质检 + 字体自检 + `--source` 自动带上），
    成品输出到 `.pi/out/<主题>.pptx`。**中间产物只留这几样**：`analysis.md`、
-   `outline.json`、`slides/*.json`、`deck.json`（需要时 `--keep-deck` 才生成）、`.pptx`；
+   `outline.json`、`budgets.md`、`slides/*.json`、`deck.json`（需要时 `--keep-deck` 才生成）、`.pptx`；
    不要再写 `qc_report.txt` / `render_report.json` 这类重复报告（报告就在 stdout）。
 3. **交付**：给出 .pptx 路径 + **本份用的三个维度**（如"研讨型 / 深蓝商务 / 慢档"，
    用户一句话就能换其中任一项）+ 每页一句话摘要（页码 / 版式 / 标题），请用户检查。
    研讨型还要额外交一份**论点论据落点核对表**（`analysis.md` 里每一项 → 落在第几页）；
    分析表里"缺口"列有内容的，交付时一并列出**还缺什么、要找谁要**。
-   **慢档交付前 warning 必须是 0**（`build.py` 结果里 `ok=false, reason=warnings_not_zero` 就是在拦这件事）；
+   **慢档交付前 warning 必须是 0**（`RESULT` 里 `ok=false, reason=warnings_not_zero` 就是在拦这件事）；
    快档交付时如实说明"按快档放行，还有 N 条 warning 未处理"。
 
 ## 边界
 
-- 渲染器在 `.pi/renderer/`，出图只走
-  `python .pi/renderer/build.py .pi/work/slides -o <out.pptx> --source .pi/work/analysis.md`
-  （或 `render.py <deck.json> -o <out.pptx> --qc --source ...` 的老路子）。
+- 出图只走 `.pi/pptx.py`（老命令 `python .pi/renderer/build.py .pi/work/slides -o <out.pptx>
+  --source .pi/work/analysis.md` 仍然等价，单步调试时可用）。
+- 阶段顺序、上游是否过期由 `.pi/work/state.json` 判定。**不要手工改/删它**来绕过拦截——
+  确实要硬闯用 `--force`，RESULT 里会留 `forced: true`，交付时可追溯。
 - 旧的确定性流水线（`src/ppt/`、`SPEC/`、`tools/`、`demo/`、`run/`）**已删除**，
   别再按旧文档去找；本仓库只走 `.pi/renderer/` 这一条出图通道。
 - 不要手写 python-pptx / OOXML / HTML→pptx。

@@ -51,9 +51,9 @@ description: 研讨型 PPT 的写作方向 —— 输入资料的论点论据全
 看不出"整块内容没进 deck"）。所以交稿前**必须**带上输入分析跑一次：
 
 ```bash
-python .pi/renderer/build.py .pi/work/slides -o .pi/out/主题.pptx \
-    --brief seminar --source .pi/work/analysis.md
+python .pi/pptx.py build -o .pi/out/主题.pptx --brief seminar
 ```
+（`--source` 会自动带上 `.pi/work/analysis.md`，不用手写）
 
 外观（配色 `--style` / 卡片 `--card`）与这一条无关，按 `ppt-common` 的表自选；
 研讨型资料密度高，`outline`（透明底、轻）或 `accent-left`（清单感）通常比默认白卡更耐看。
@@ -193,8 +193,8 @@ flow 每步 desc ≥ 16、hierarchy 每个 node.desc ≥ 20 —— 改写润色�
 
 ```bash
 # 一条命令：合并 + 质检 + 渲染 + 字体自检（--style/--card 可选，不写就是 style-harness + flat）
-python .pi/renderer/build.py .pi/work/slides -o .pi/out/主题.pptx --title 标题 \
-    --brief seminar --style violet-tech --card accent-left --source .pi/work/analysis.md
+python .pi/pptx.py build -o .pi/out/主题.pptx --title 标题 \
+    --brief seminar --style violet-tech --card accent-left
 ```
 
 质检会按 `.pi/renderer/briefs/seminar.yaml` 的 `check` 段查红线并报 warning：

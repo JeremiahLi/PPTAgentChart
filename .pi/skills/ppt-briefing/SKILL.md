@@ -78,9 +78,9 @@ description: 汇报型 PPT 的写作方向 —— 一页一个主张、结论先
 
 ```bash
 # 一条命令：合并 + 质检 + 渲染 + 字体自检（外观两参数可选，不写就是 style-harness + flat）
-python .pi/renderer/build.py .pi/work/slides -o .pi/out/主题.pptx --title 标题 \
+python .pi/pptx.py build -o .pi/out/主题.pptx --title 标题 \
     --brief briefing --style blue-business --card outline
-# 改完页先看红线（不落盘）：把 -o 那段换成 --check
+# 改完页先看红线（不落盘）：python .pi/pptx.py check
 ```
 
 汇报型默认建议 `blue-business` 或 `style-harness` 配色 + `outline`/`accent-top` 卡片：

@@ -17,6 +17,38 @@
 > 任务收尾时必须当场 `git add` + `git commit`（commit 信息一律**简体中文**、概括本次改动）+
 > `git push origin main`，不要等用户提醒。禁止 `--force`；`.gitignore` 已排除的产物不入库。
 
+## 唯一入口：`.pi/pptx.py`
+
+以前"分析 → 大纲 → 预算 → 写页 → 出图"这条顺序**只写在 markdown 里**，没有任何东西保证
+被按序执行：跳过 `budgets.py` 直接写 slides，`build.py` 照样出图，直到长度校验报错才返工。
+现在顺序在代码里，**跳一步必然失败**：
+
+```bash
+python .pi/pptx.py                       # 看状态（不带子命令 = status）
+python .pi/pptx.py analyze 材料.docx      # Word 预处理 + 分析表骨架
+python .pi/pptx.py outline --title "主题"  # 分析表 → 结构化大纲
+python .pi/pptx.py budget                # 大纲 → 逐页字数预算
+python .pi/pptx.py build -o .pi/out/x.pptx   # 合并 + 质检 + 渲染 + 字体自检
+python .pi/pptx.py check                 # 只质检不出文件
+```
+
+三条契约（与 `build.py` 同口径，不另立一套）：
+
+| 项 | 约定 |
+|---|---|
+| **成败** | 每条命令末行都是 `RESULT {json}`（`status` 也有），看 `ok` + `errors[].code`；`code` 是稳定枚举（`E_STAGE_MISSING` / `E_STAGE_STALE` / `E_QC_ERROR` …），中文只在 `message` / `hint` 里 |
+| **退出码** | 业务结果（校验拦截、上游缺失、过期、warning 未归零）**恒 0**；只有未捕获异常退 1，参数拼错退 2（这类错误不该被静默） |
+| **状态** | `.pi/work/state.json`：每阶段记输入的**内容指纹**（sha256 前 12 位，不是 mtime）。改过源文件，下游自动判过期并拦住 |
+
+门禁分两级：**requires**（缺了就报错，如大纲缺分析表）、**advises**（缺了只告警，如没跑
+budget 就出图）。`--force` 可硬闯，`RESULT` 里留 `forced: true` 可追溯。
+`untracked` 是迁移态：产物在但无指纹记录（新入口上线前跑的老流程），门禁放行但告警，
+重跑一次就收录。
+
+**`.pi/renderer/*.py` 全部保留可用**（单步调试、脚本调用照旧），`pptx.py` 只是适配层：
+它不复制任何判定逻辑（字数上限、几何容量、字体口径仍在原处），内部拆分时只改
+`STAGE_SCRIPTS`。入口层回归：`python .pi/tests/entry.py`（纯标准库，没装 python-pptx 也能跑）。
+
 ## 谁负责什么
 
 - **三个用户维度 + 默认值**（`build.py --brief / --style / --speed`）：

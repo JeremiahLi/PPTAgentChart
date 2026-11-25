@@ -13,11 +13,16 @@ description: PPT 制作的公共规范（出图通道 / 19 版式字段契约 / 
 
 ## 出图通道（唯一）
 
-- **一条命令出图（默认走这条）**：`build.py <slides_dir> -o <out.pptx> --brief 方向`
-  = 合并 + 质检 + 渲染 + 字体自检（默认原生可编辑图表；要高质感图加 `--chart-mode mpl`）
-- 只渲染已有 deck.json：`python .pi/renderer/render.py <deck.json> -o <out.pptx> --qc`
-- 合并（需要中间 deck.json 时才单独跑）：`python .pi/renderer/merge.py <slides_dir> <out.json>`
-- 校验（不渲染，只看 schema）：`python .pi/renderer/ppt_dsl.py <deck.json>`
+- **默认走 `.pi/pptx.py`**：一个入口按顺序跑完整条流水线，跳步会被当场拦下
+  （`analyze → outline → budget → 写页 → build`）。
+  `python .pi/pptx.py` 不带参数 = 看当前进度与下一步该跑哪条。
+- 一条命令出图：`pptx.py build <slides_dir> -o <out.pptx> --brief 方向`
+  = 合并 + 质检 + 渲染 + 字体自检（默认原生可编辑图表；要高质感图加 `--chart-mode mpl`）；
+  `--source` 不用写，`.pi/work/analysis.md` 在就自动带上。
+- 只质检不出文件：`pptx.py check`
+- 下面这些**等价的老命令**仍可用（单步调试、脚本调用时用），正常流程不必拆开敲：
+  `render.py <deck.json> -o <out.pptx> --qc` / `merge.py <slides_dir> <out.json>` /
+  `ppt_dsl.py <deck.json>`（只看 schema）
 - **禁止**直接调 python-pptx、禁止手写 .pptx XML、禁止 HTML→pptx。
 
 ### 输入是 Word（`.docx`）时：先跑一次预处理
@@ -75,7 +80,7 @@ markdown 里图片按原位置留了 `![图N](media/NN-xxx.emf)` 标记，排页
    **写批次前先出预算表**（大纲定稿后跑一次，整份 deck 共用）：
 
    ```bash
-   python .pi/renderer/budgets.py .pi/work/outline.json -o .pi/work/budgets.md
+   python .pi/pptx.py budget
    ```
 
    写每一批前先读该批页码对应的预算段：每页**先定条目数再写内容**，定完别改
@@ -94,18 +99,18 @@ markdown 里图片按原位置留了 `![图N](media/NN-xxx.emf)` 标记，排页
 3. **一条命令出图**（合并 + 质检 + 渲染 + 字体自检，别再分三步敲）：
 
    ```bash
-   python .pi/renderer/build.py .pi/work/slides -o .pi/out/<主题>.pptx \
-       --brief seminar --style blue-business --speed slow \
-       --source .pi/work/analysis.md
+   python .pi/pptx.py build -o .pi/out/<主题>.pptx \
+       --brief seminar --style blue-business --speed slow
    ```
 
-   - `--check` 只质检不落盘：改完页想先看红线时用它。
+   - `python .pi/pptx.py check` 只质检不落盘：改完页想先看红线时用它。
    - `--only 3,7` 只渲这几页看版式（页码与整份不一致，**交稿必须整份渲**）。
    - 报告是紧凑 JSON（`errors` / `warnings`），**直接读 stdout，不要再重定向到
      qc_report.txt** —— 那是重复产物，还多一次读写。
    - 渲染很便宜（30 页约 1 秒），贵的是"为了看报告多跑一个回合"——**一批做完再跑一次**。
-4. **回炉（按批重写，不要逐页补丁）**：读报告里的 slide/type/field/message，把这一轮
-   点名的问题**一次改完**：直接重写它所在的 `NN-batch.json`（一个文件一次写），
+4. **回炉（按批重写，不要逐页补丁）**：按报告里的 `slide` / `field` / `code`
+   （`E_QC_ERROR` 是红线、`E_STAGE_STALE` 说明上游改过、`E_WARNINGS_NOT_ZERO` 是慢档未归零）
+   把这一轮点名的问题**一次改完**：直接重写它所在的 `NN-batch.json`（一个文件一次写），
    比逐页 `replace_in_file` 少 N-1 次往返；只有"改一句话"这种单点微调才用 `replace_in_file`。
    改完**再跑第 3 步一次**，最多 2 轮。
    **warning 也要处理**：「加粗跨度过长 / 没有标重点 / 加粗占比过高」说明这一页没有重点，
