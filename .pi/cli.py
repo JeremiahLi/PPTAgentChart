@@ -97,13 +97,18 @@ class Stage:
     后者会把"文件在但内容是旧的"当成通过，正是返工的来源。
     """
 
-    def __init__(self, key, label, requires=(), advises=(), produces=(), manual=False):
+    def __init__(self, key, label, requires=(), advises=(), produces=(), manual=False,
+                 editable_outputs=False):
         self.key = key
         self.label = label
         self.requires = tuple(requires)
         self.advises = tuple(advises)
         self.produces = tuple(produces)
         self.manual = manual
+        # 产物设计上要人工补内容（analyze 的骨架结论/缺口就是留给人填的）：
+        # 这类产物内容变了不算过期，否则"补内容"会被判成"上游改过"，
+        # hint 又让人重跑 analyze——重跑恰好把补的内容冲掉。输入指纹照常校验。
+        self.editable_outputs = editable_outputs
 
     @property
     def short(self):
@@ -114,7 +119,10 @@ class Stage:
 STAGES = [
     # analyze 顺带产出 input.md（docx 预处理），但状态只锚定 analysis.md：
     # input.md 是派生物，有人手工修过它不该被判成"过期"再被覆盖掉。
-    Stage("analyze", "输入分析", requires=(), produces=(ART_ANALYSIS,)),
+    # analysis.md 同理——骨架生成后本来就要人工补结论/缺口，内容变化不是失效；
+    # 源文件（inputs）变了才判过期。editable_outputs 只豁免产物指纹，不豁免输入。
+    Stage("analyze", "输入分析", requires=(), produces=(ART_ANALYSIS,),
+          editable_outputs=True),
     Stage("outline", "大纲规划", requires=("analyze",), produces=(ART_OUTLINE,)),
     Stage("budget", "字数预算", requires=("outline",), produces=(ART_BUDGETS,)),
     Stage("slides", "逐页 JSON", requires=("outline",), produces=(ART_SLIDES,), manual=True),
@@ -226,7 +234,7 @@ def stage_state(key: str) -> str:
 
     - 没记录也没产物      → pending
     - 有记录但产物没了     → pending（被手工删了，当作没做过）
-    - 产物在但内容变了     → stale（有人手改过产物）
+    - 产物在但内容变了     → stale（有人手改过产物）；editable_outputs 阶段除外
     - 任一输入内容变了     → stale（上游重跑过，这一步的结论已过期）
     """
     st = BY_KEY[key]
@@ -254,7 +262,9 @@ def stage_state(key: str) -> str:
         cur = sha_path(rel)
         if cur is None:
             return "pending"
-        if cur != sha:
+        # 人工补全型产物只要求"文件还在"，不比内容指纹——补内容正是这一步的工作。
+        # 但源文件/上游这类 inputs 仍逐个比对，真变了照样判过期。
+        if cur != sha and not st.editable_outputs:
             return "stale"
     for item in rec["inputs"].values():
         cur = sha_path(item["path"])

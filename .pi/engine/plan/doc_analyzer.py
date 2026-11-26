@@ -446,6 +446,9 @@ _ANALYSIS_HEAD = """# 输入分析
 > - 论据：分号分隔 2-4 条，**数字优先**（覆盖率、时长、人数、金额）；
 > - 缺口：没有就写 `无`；有就写"缺什么 + 找谁要"，研讨型会在交付时原样列给用户。
 >
+> 编辑时用 `read` 复制目标行的原文做 `oldText`，**不要手拼**——模块名里的链接
+> 可能被截成 `…`（U+2026），全角标点也多，少一个字符整批 edit 就会原子回滚。
+>
 > 改完直接重跑（**不带** `--emit-analysis`）：
 > `python .pi/cli.py run engine.plan.plan .pi/work/analysis.md -o .pi/work/outline.json --title "..." --brief seminar`
 

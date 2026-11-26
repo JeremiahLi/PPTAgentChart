@@ -177,6 +177,35 @@ def main() -> int:
         check("过期后 build 被拦", "E_STAGE_STALE" in codes(res), str(codes(res)))
         code, out, res = run(root, "build", "-o", ".pi/out/x.pptx", "--force")
         check("--force 绕过过期拦截", (res or {}).get("ok") is True, out)
+
+        def states_of(result: dict | None) -> dict[str, str]:
+            return {r["stage"]: r["state"] for r in (result or {}).get("stages", [])}
+
+        print("人工补写分析表不算过期")
+        code, out, res = run(root, "analyze", "src.md")  # 先把上面造的过期收回来
+        check("重跑 analyze 复位", (res or {}).get("ok") is True, out)
+        art = root / ".pi" / "work" / "analysis.md"
+        art.write_text(art.read_text(encoding="utf-8") +
+                       "| 四、自建扩展 | 手工补的结论 | 手工补的论据 | 无 |\n",
+                       encoding="utf-8")
+        code, out, res = run(root)
+        check("产物被人工补写后 analyze 仍 done", states_of(res).get("analyze") == "done",
+              str(states_of(res)))
+        code, out, res = run(root, "outline", "--title", "T")
+        check("补写后 outline 不被 stale 拦", (res or {}).get("ok") is True
+              and "E_STAGE_STALE" not in codes(res), out + " / " + str(codes(res)))
+        code, out, res = run(root)
+        check("outline 收录了补写后的指纹", states_of(res).get("outline") == "done",
+              str(states_of(res)))
+
+        print("源文件变化仍判过期")
+        (root / "src.md").write_text("# 源文档\n源文件这次真的变了，超过三十个字，用于验证输入指纹仍在校验。\n",
+                                     encoding="utf-8")
+        code, out, res = run(root)
+        check("源文件变了 analyze 判过期", states_of(res).get("analyze") == "stale",
+              str(states_of(res)))
+        code, out, res = run(root, "outline", "--title", "T")
+        check("源文件变了 outline 被拦", "E_STAGE_STALE" in codes(res), str(codes(res)))
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
